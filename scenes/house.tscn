@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://p0vyp1me10lx"]
+
+[ext_resource type="Script" uid="uid://cbfjaxa5ag84k" path="res://scenes/house.gd" id="1_d7po0"]
+
+[node name="House" type="Node2D" unique_id=2131843458]
+script = ExtResource("1_d7po0")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=636640573]
+offset_right = 640.0
+offset_bottom = 360.0
+color = Color(0.7882353, 0.7764706, 0.75686276, 1)
+
+[node name="Label" type="Label" parent="." unique_id=850066042]
+offset_left = 8.0
+offset_top = 4.0
+offset_right = 227.0
+offset_bottom = 27.0
+text = "Press Enter to go to the attic"
