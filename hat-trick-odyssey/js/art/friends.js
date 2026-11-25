@@ -30,8 +30,8 @@ export function drawMouse(ctx, x, y, opts) {
   blob(ctx, 7.6, -2.8, 1, 1, PAL.pink, 0.8);
   ctx.restore();
 }
-export function drawFizz(ctx, x, y, opts) { drawMouse(ctx, x, y, Object.assign({ color: PAL.teal }, opts)); }
-export function drawPop(ctx, x, y, opts) { drawMouse(ctx, x, y, Object.assign({ color: PAL.tangerine }, opts)); }
+export function drawFizz(ctx, x, y, opts) { const o = opts || {}; o.color = PAL.teal; drawMouse(ctx, x, y, o); }
+export function drawPop(ctx, x, y, opts) { const o = opts || {}; o.color = PAL.tangerine; drawMouse(ctx, x, y, o); }
 
 // MUMBLE the worrywart snail in his chipped teacup. Cup BASE-centre at (x, y).
 // opts: t, talking (peeks higher and wiggles), facing, scale

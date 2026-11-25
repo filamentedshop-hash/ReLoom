@@ -229,11 +229,16 @@ export function drawFollowers(ctx, game) {
     const dx = x - p.trail[j * 2];
     const moving = Math.abs(dx) > 0.5 || Math.abs(y - p.trail[j * 2 + 1]) > 0.5;
     if (dx > 0.2) p['f' + k] = 1; else if (dx < -0.2) p['f' + k] = -1;
-    const o = { facing: p['f' + k] || 1, t: p.t + k * 9, moving, cheer: p.cheer };
-    if (p.gdir < 0) { ctx.save(); ctx.translate(x, y); ctx.scale(1, -1); (k ? drawPop : drawFizz)(ctx, 0, 0, o); ctx.restore(); }
-    else (k ? drawPop : drawFizz)(ctx, x, y, o);
+    // when Whisk stands still the mice line up behind him instead of piling up
+    const want = moving ? 0 : -p.facing * (13 + k * 11);
+    const ox = p['o' + k] = (p['o' + k] || 0) + (want - (p['o' + k] || 0)) * 0.12;
+    const o = followOpts;
+    o.facing = moving ? (p['f' + k] || 1) : p.facing; o.t = p.t + k * 9; o.moving = moving || Math.abs(want - ox) > 1; o.cheer = p.cheer;
+    if (p.gdir < 0) { ctx.save(); ctx.translate(x + ox, y); ctx.scale(1, -1); (k ? drawPop : drawFizz)(ctx, 0, 0, o); ctx.restore(); }
+    else (k ? drawPop : drawFizz)(ctx, x + ox, y, o);
   }
 }
+const followOpts = { facing: 1, t: 0, moving: false, cheer: false, color: null };
 
 export function drawPlayer(ctx, game) {
   const p = game.player, g = p.gdir;

@@ -206,7 +206,8 @@ export class Game {
     const done = () => { this.busy = false; };
     let pr;
     try { pr = this.app.cutscenes.play(id); } catch (err) { console.error(err); }
-    if (pr && pr.then) pr.then(done, done); else done();
+    // A scene that will actually show must set cutscenes.active synchronously.
+    if (pr && pr.then && this.app.cutscenes.active) pr.then(done, done); else done();
     return pr;
   }
   addButtons(k) { this.stats.buttons += k; this.save.addButtons(k); }

@@ -143,7 +143,7 @@ export function moveBody(game, b) {
   if (landed) {
     b.onGround = true;
     b.groundTile = ground;
-    if (ground && ground.bounce && my * g > 0.5) {
+    if (ground && ground.bounce) {
       b.vy = -g * (b.bounceHeld ? Math.max(ground.bounce, PHYS.bounceTileHeld) : ground.bounce);
       b.onGround = false; b.bounced = true;
     } else b.vy = 0;

@@ -5,7 +5,11 @@
 //                                        skipped; MUST resolve immediately for
 //                                        unknown ids and for scenes that should
 //                                        not replay (use app.save.flag()).
-//   cutscenes.active                     true while a scene is playing; while
+//   cutscenes.active                     true while a scene is playing. play()
+//                                        MUST set it synchronously (before it
+//                                        returns) when it is going to show
+//                                        something: the engine only waits for
+//                                        the promise when active is true. While
 //                                        true the app calls update/draw/pointer
 //                                        on this object INSTEAD of updating the
 //                                        current scene (which is still drawn

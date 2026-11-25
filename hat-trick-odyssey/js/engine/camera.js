@@ -26,7 +26,7 @@ export class Camera {
     const g = p.gdir || 1;
     return {
       x: p.x + p.w / 2 - view.w / 2 + this.lookX,
-      y: p.y + p.h / 2 - view.h * (g > 0 ? 0.56 : 0.44),
+      y: p.y + p.h / 2 - view.h * (g > 0 ? 0.64 : 0.36),
     };
   }
   snap(level, p) {

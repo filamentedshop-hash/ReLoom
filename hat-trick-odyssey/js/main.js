@@ -51,7 +51,7 @@ export const app = {
     const next = () => this.go('clear', info);
     let pr;
     try { pr = this.cutscenes.play('w' + game.n + '_clear'); } catch (e) { this.logError(e); }
-    if (pr && pr.then) pr.then(next, next); else next();
+    if (pr && pr.then && this.cutscenes.active) pr.then(next, next); else next();
   },
   wantTouch() { return input.touchSeen || coarse || params.get('touch') === '1'; },
   applySettings() {

@@ -85,18 +85,22 @@ export function drawGloomlet(ctx, x, y, opts) {
   const body = o.body || PAL.gloom, dark = o.dark || PAL.gloomDark;
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   const rx = 9 + sq * 3 - breathe * 0.4, ry = 8 - sq * 3.5 + breathe;
-  ctx.beginPath();
-  ctx.moveTo(-rx, 0);
-  ctx.bezierCurveTo(-rx - 1, -ry * 1.5, -rx * 0.5, -ry * 2, 0, -ry * 2);
-  ctx.bezierCurveTo(rx * 0.5, -ry * 2, rx + 1, -ry * 1.5, rx, 0);
-  ctx.quadraticCurveTo(rx * 0.5, 1.5, 0, 0.5);
-  ctx.quadraticCurveTo(-rx * 0.5, 1.5, -rx, 0);
-  ctx.closePath();
+  const bodyPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(-rx, 0);
+    ctx.bezierCurveTo(-rx - 1, -ry * 1.5, -rx * 0.5, -ry * 2, 0, -ry * 2);
+    ctx.bezierCurveTo(rx * 0.5, -ry * 2, rx + 1, -ry * 1.5, rx, 0);
+    ctx.quadraticCurveTo(rx * 0.5, 1.5, 0, 0.5);
+    ctx.quadraticCurveTo(-rx * 0.5, 1.5, -rx, 0);
+    ctx.closePath();
+  };
+  bodyPath();
   ctx.fillStyle = body; ctx.fill();
   ctx.save(); ctx.clip();
   ctx.fillStyle = dark; ctx.fillRect(-rx - 2, -3.5, rx * 2 + 4, 6);
   ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.ellipse(-rx * 0.4, -ry * 1.55, rx * 0.3, ry * 0.22, -0.5, 0, 6.2832); ctx.fill();
   ctx.restore();
+  bodyPath();
   outline(ctx, 2 / Math.max(1, s * 0.6)); ctx.stroke();
   // droopy face
   const ey = -ry * 1.05, ex = f * 2;
