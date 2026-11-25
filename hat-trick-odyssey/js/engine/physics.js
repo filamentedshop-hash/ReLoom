@@ -107,14 +107,15 @@ export function moveBody(game, b) {
   }
 
   // solid boxes (vertical)
+  let newRide = null;
   const S = game.solids;
   for (let i = 0; i < S.length; i++) {
     const s = S[i];
     if (s === b || s.off || s.dead) continue;
     if (b.x < s.x + s.w - EPS && b.x + b.w > s.x + EPS && b.y < s.y + s.h && b.y + b.h > s.y) {
       const fromAbove = b.y + b.h / 2 < s.y + s.h / 2;
-      if (fromAbove) { b.y = s.y - b.h; if (g > 0) { landed = true; b.riding = s; } else { b.hitCeil = true; if (b.vy > 0) b.vy = 0; } }
-      else { b.y = s.y + s.h; if (g < 0) { landed = true; b.riding = s; } else { b.hitCeil = true; if (b.vy < 0) b.vy = 0; } }
+      if (fromAbove) { b.y = s.y - b.h; if (g > 0) { landed = true; newRide = s; } else { b.hitCeil = true; if (b.vy > 0) b.vy = 0; } }
+      else { b.y = s.y + s.h; if (g < 0) { landed = true; newRide = s; } else { b.hitCeil = true; if (b.vy < 0) b.vy = 0; } }
     }
   }
 
@@ -128,7 +129,7 @@ export function moveBody(game, b) {
       if (b.x + b.w <= p.x + EPS || b.x >= p.x + p.w - EPS) continue;
       if (g > 0) {
         const top = p.y, prevTop = p.y - p.dy;
-        const prevFeet = prevY + b.h - (ride === p ? 0 : 0);
+        const prevFeet = prevY + b.h;
         if (b.y + b.h >= top && prevFeet <= prevTop + Math.max(2, Math.abs(p.dy) + 1.5)) { b.y = top - b.h; plat = p; }
       } else {
         const bot = p.y + p.h, prevBot = bot - p.dy;
@@ -136,8 +137,8 @@ export function moveBody(game, b) {
       }
     }
   }
-  if (plat) { landed = true; b.riding = plat; ground = null; }
-  else if (!landed || ground) { if (!(b.riding && b.riding.def && b.riding.def.solid && landed)) b.riding = null; }
+  if (plat) { landed = true; newRide = plat; ground = null; }
+  b.riding = newRide;
 
   if (landed) {
     b.onGround = true;
