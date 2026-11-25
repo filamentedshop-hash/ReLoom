@@ -6,7 +6,15 @@ import { INK, PAL, outline } from './draw.js';
 const STYLES = {
   patchwork: { crown: PAL.hatPurple, brim: PAL.hatBrim, patch: PAL.hatPatch, band: PAL.hatBand },
 };
+// A style is a set of colours for the default patchwork shape. It may also
+// carry (both optional, used by the hat shop in js/ui/hats.js):
+//   draw(ctx, st, wob, H, opts)   replaces the whole shape. Drawn in hat-local
+//                                 units: brim bottom-centre at (0, 0), y up is
+//                                 negative, the default hat is 18 wide and H
+//                                 (13) tall; wob = crown tip sideways offset.
+//   extra(ctx, st, wob, H, opts)  drawn on top of the default shape.
 export function registerHatStyle(id, colors) { STYLES[id] = Object.assign({}, STYLES.patchwork, colors); }
+export function hasHatStyle(id) { return !!STYLES[id]; }
 export function hatStyles() { return Object.keys(STYLES); }
 let currentStyle = 'patchwork';
 export function setHatStyle(id) { if (STYLES[id]) currentStyle = id; }
@@ -25,6 +33,7 @@ export function drawHat(ctx, x, y, opts) {
   if (opts && opts.angle) ctx.rotate(opts.angle);
   ctx.scale(s, s);
   const H = 13 * sq;
+  if (st.draw) { st.draw(ctx, st, wob, H, opts); ctx.restore(); return; }
   // crown: a slightly flared tube whose top leans with the wobble
   ctx.beginPath();
   ctx.moveTo(-5, -2);
@@ -50,6 +59,7 @@ export function drawHat(ctx, x, y, opts) {
   // brim
   ctx.beginPath(); ctx.ellipse(0, -1.5, 9, 2.6, 0, 0, 6.2832);
   ctx.fillStyle = st.brim; ctx.fill(); outline(ctx, 1.6); ctx.stroke();
+  if (st.extra) st.extra(ctx, st, wob, H, opts);
   ctx.restore();
 }
 

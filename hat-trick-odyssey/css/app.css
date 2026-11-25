@@ -81,3 +81,9 @@ html, body {
   position: fixed; left: 0; top: 0; width: 0; height: 0; visibility: hidden; pointer-events: none;
   padding: var(--sat) var(--sar) var(--sab) var(--sal);
 }
+
+/* ---------- ui: touch control preferences (set by js/ui/kit.js) ---------- */
+html.touch-s { --btn: clamp(44px, 12.5vmin, 70px); }
+html.touch-l { --btn: clamp(62px, 18.5vmin, 102px); }
+html.lefty .pad-left { left: auto; right: calc(var(--sar) + 16px); }
+html.lefty .pad-right { right: auto; left: calc(var(--sal) + 16px); flex-direction: row-reverse; }
