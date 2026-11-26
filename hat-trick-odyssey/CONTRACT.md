@@ -2,6 +2,8 @@
 
 The guide every agent follows. It describes the code as it is; if you find a mismatch, the code wins and you report it (do not edit engine files).
 
+Status: all 9 worlds, the story, audio, menus and the PWA shell are built and integrated. This file was brought up to date in the integration/QA pass.
+
 Static site, vanilla ES modules, no build step. Serve the folder and open `index.html`.
 
 ```
@@ -18,8 +20,12 @@ js/engine/                     ENGINE (owner: engine architect)
   camera.js particles.js hud.js save.js audio.js playscene.js debug.js
 js/art/                        shared art helpers (draw, hat, whisk, friends, items, bg)
 js/worlds/index.js, w1.js..w9.js
-js/ui/                         title, map, clear, shop, settings, cutscenes, widgets
-tools/serve.sh, tools/smoke.mjs
+js/ui/                         title, map, clear, shop, settings, cutscenes, widgets,
+                               kit (menu widgets + UI prefs), hats (shop hat styles), islands (map art)
+js/story/                      script.js (every cutscene as data), art.js (panel painters)
+manifest.webmanifest, sw.js, pwa.js, icons/   installable offline web app (see README)
+tools/serve.sh, tools/smoke.mjs, tools/make-precache.mjs, tools/make-icons.mjs
+.github/workflows/ (repo root)  GitHub Pages deploy (regenerates the precache list)
 ```
 
 ## 1. File ownership
@@ -322,7 +328,7 @@ defineBoss('w4_boss', {
 });
 ```
 
-- `L.arena({from, to, boss, bossAt})`: the boss is spawned dormant at the `bossAt` cell. When Whisk walks 30px into the arena the camera locks to it, invisible walls close, the boss wakes, the boss bar (title + pips) appears, `bossMusic` plays and the cutscene `w{N}_boss` is requested.
+- `L.arena({from, to, boss, bossAt})`: the boss is spawned dormant at the `bossAt` cell. When Whisk walks 30px into the arena the camera locks to it, invisible walls close, the boss wakes, the boss bar (title + pips) appears (while the arena is locked the camera frames Whisk and the boss together, keeping Whisk at least ~90px from the view edge, and the HUD draws a pink edge arrow when the boss is off-screen), `bossMusic` plays and the cutscene `w{N}_boss` is requested.
 - Default `onHit`: stomps, abilities and friendly projectiles count, the hat clinks. Override it so the fight needs **your world's captures**. Call `hurtBoss(e, game)` for a hit that counts (it handles hp, invulnerability, shake, confetti).
 - Fields: `e.hp, e.maxHp, e.inv, e.dormant, e.defeated, e.step, e.stepT`. `byHits(e, [a, b, c])` picks by hits taken. `stepName(e, STEPS)` for drawing.
 - At 0 hp the engine plays 96 frames of confetti, removes the boss, unlocks the camera and drops the 8th Fun Spark at a reachable spot under where the boss was; collecting it clears the world. For the final boss, show the "he laughs" beat in `onDefeated` / your idle drawing and the `w8_clear` cutscene.
@@ -346,18 +352,18 @@ World-specific art (creatures, bosses, tiles, backgrounds) lives in your world f
 
 ## 11. Audio, save, input APIs
 
-**Audio** (`engine/audio.js`, export `audio`): `unlock()`, `sfx(name)`, `music(trackId)`, `stopMusic()`, `setVolume(0..1)`, `setSfxEnabled(bool)`, `setMusicEnabled(bool)`, `suspend()`, `resume()`. Unknown names must be ignored silently. In worlds call `game.sfx(name)`.
-Names the engine fires: `jump land throw catch capture release hattrick button spark heart hurt stomp pop checkpoint bounce break switch door splash swim clink hint toast bosshit bossdown clear ui uiBack pause`. Music ids requested: `title map w1..w9 boss finalboss clear` (plus whatever a world sets in `music` / `bossMusic`). The current version is a tiny placeholder synth with no music.
+**Audio** (`engine/audio.js`, export `audio`): a WebAudio synth (oscillators + filtered noise) with original looping music played by a lookahead scheduler; no audio files. `unlock()`, `sfx(name, {pitch, vol}?)`, `music(trackId, {restart, fade}?)` (same id = no-op, crossfades otherwise), `stopMusic(fade?)`, `setVolume(0..1)`, `setSfxEnabled(bool)`, `setMusicEnabled(bool)`, `suspend()`, `resume()`. Extras: `setMusicVolume(v)` / `setSfxVolume(v)` (save keys `musicVol` / `sfxVol`; no menu exposes them yet), `setMusicIntensity(0..1)` (layered `w8` track; World 8 drives it from how much color has returned), `duck(seconds)`, `tracks`, `sfxNames`. Unknown sfx names are matched by keyword (`w4_snore` → snore) or play a soft blip; unknown music ids fall back by keyword, else to `map`. In worlds call `game.sfx(name)`.
+Names the engine fires: `jump land throw catch capture release hattrick button spark heart hurt stomp pop checkpoint bounce break switch door splash swim clink hint toast bosshit bossdown clear ui uiBack pause`; the full list of named sounds is at the top of `audio.js`. Music: title → `title`, map → `map`, world N → `wN` (`world.music`), boss → `boss` (`finalboss` in World 8 via `bossMusic`), clear → `clear`, cutscenes may set their own (`ending`). iOS: audio unlocks on the first touch; `suspend/resume` run on visibilitychange.
 
 **Save** (`engine/save.js`, export `save`; localStorage key `hat-trick-odyssey-save-v1`, everything try/catch):
-`save.data` = `{worlds: {n: {sparks (bitmask), cleared, bestTime, buttonsBest}}, buttons, hats: [ids], hat, settings: {sfx, music, volume, shake}, seen: {}}`.
+`save.data` = `{worlds: {n: {sparks (bitmask), cleared, bestTime, buttonsBest}}, buttons, hats: [ids], hat, settings: {sfx, music, volume, shake, touchSize ('s'|'m'|'l'), lefty, musicVol?, sfxVol?}, seen: {}, gameComplete?}`. `seen` flags in use: `intro` (title played the intro once), `cs_<sceneId>` (cutscene seen), `a2hsTip` / `a2hsShown` (Add to Home Screen tip), `gameComplete` (World 8 beaten).
 Methods: `load()`, `commit()`, `reset()`, `world(n)`, `hasSpark(n, id)`, `addSpark(n, id)`, `sparkCount(n)`, `totalSparks()`, `isCleared(n)`, `setCleared(n, frames, buttons)`, `isUnlocked(n)`, `lockReason(n)` → `null | {needClear} | {needSparks}`, `buttons`, `addButtons(k)`, `spendButtons(k)` → bool, `ownsHat(id)`, `addHat(id)`, `equipHat(id)`, `setting(k)`, `setSetting(k, v)`, `flag(k)`, `setFlag(k, v)`. Constants: `WORLD_COUNT` 9, `SPARKS_PER_WORLD` 8, `SPARKS_NEEDED` (world n unlocks when world n-1 is cleared AND total sparks ≥ `[_,0,1,4,8,12,17,22,28,48][n]`). The engine saves sparks, clears and buttons itself; worlds never need to.
 
 **Input** (`engine/input.js`, export `input`): actions `left right jump hat pause`. `held(a)`, `pressed(a)` (queued, never missed), `released(a)`, `consume(a)`, `axis()`. Menus use Left/Right to move, Jump to confirm, Hat to go back. Keyboard: arrows/A-D, Space/Z/Up/W, X/Shift, Esc/P/Enter = pause. Worlds read input only through capture hooks (`c`), never directly.
 
 ## 12. App, scenes, cutscenes (UI agents)
 
-`app` (from `js/main.js`, passed to every scene hook): `app.go(sceneName, params)`, `app.save`, `app.audio`, `app.input`, `app.view`, `app.worlds` (index = world id), `app.cutscenes`, `app.applySettings()`, `app.wantTouch()`, `app.t`.
+`app` (from `js/main.js`, passed to every scene hook): `app.go(sceneName, params)`, `app.save`, `app.audio`, `app.input`, `app.view`, `app.worlds` (index = world id), `app.cutscenes`, `app.applySettings()` (audio volume/switches, reduced motion, and the touch prefs via `applyUiPrefs` from `ui/kit.js`), `app.wantTouch()`, `app.t`, `app.params`, `app.logError(e)`.
 
 A scene is an object `{enter(app, params), exit(app), update(app), draw(ctx, app), pointer(app, kind, x, y), resize(app), onHide(app)}` (all optional). `draw` is in view coordinates (0..`view.w`, 0..`view.h`); `pointer` kinds are `'down' | 'move' | 'up'` in the same coordinates. Scenes and required exports:
 
@@ -366,17 +372,17 @@ A scene is an object `{enter(app, params), exit(app), update(app), draw(ctx, app
 | `ui/title.js` | `titleScene` | on tap/Jump: play cutscene `'intro'` the first time, then `app.go('map')` |
 | `ui/map.js` | `mapScene` | list 9 worlds with `save.isUnlocked/lockReason/sparkCount/isCleared`; `app.go('play', {world: n})`; links to `'shop'` and `'settings'`. `enter` params: `{world, advance}` |
 | `ui/clear.js` | `clearScene` | `enter(app, {world, name, sparks, newSparks, buttons, frames})`; then `app.go('map', {world, advance: true})` |
-| `ui/shop.js` | `shopScene` | spend Buttons on hat styles (`registerHatStyle` at module load, `save.addHat/equipHat`); back to `'map'`. The engine applies `save.data.hat` when a world starts |
-| `ui/settings.js` | `settingsScene` | toggle settings, call `app.applySettings()`; back to `'map'` |
+| `ui/shop.js` | `shopScene` | spend Buttons on hat styles (`ui/hats.js` registers them with `registerHatStyle(id, {colors | draw, extra})` at module load; `hasHatStyle(id)` guards unknown ids; `save.addHat/equipHat`); back to `'map'`. The engine applies `save.data.hat` when a world starts. 13 hats, 415 Buttons in total; the Golden Topper is a prize for clearing World 9 |
+| `ui/settings.js` | `settingsScene` | toggle settings, call `app.applySettings()`; `enter` params `{from: 'title' | 'map'}` (goes back there). Also Reset Save (with confirm) and a **Story** button that replays any scene already seen (`cutscenes.gallery()` / `replay(id)`) |
 | `ui/cutscenes.js` | `cutscenes` | `play(id)` → Promise; `active`; `update(app)`, `draw(ctx, app)`, `pointer(app, kind, x, y)`. Resolve immediately for unknown ids and for scenes that should not replay (`app.save.flag`). **Set `active = true` synchronously inside `play()`** when a scene will show: the engine only waits for the promise if `active` is true. While active, the app calls the cutscene's update/draw/pointer instead of updating the scene underneath (which is still drawn first) |
 
-Cutscene ids requested by the engine: `intro`, `w{N}_intro` (entering a world), `w{N}_boss` (first time the arena locks), `w{N}_clear` (before the clear screen). `ui/widgets.js` has `button(ctx, rect, label, opts)` and `hit(rect, x, y, pad)`.
+Cutscene ids requested by the engine: `intro` (title, first Play), `w{N}_intro` (entering a world; story id `pre-wN`), `w{N}_boss` (first time the arena locks; only `w8_boss` exists), `w{N}_clear` (before the clear screen; `post-wN`, World 8 → `ending`, World 9 → `w9-clear`). World 8 also requests `ending` itself when its last spark is collected. A scene plays once (flag `cs_<id>`); `cutscenes.replay(id)` forces it. `cutscenes.disabled = true` (URL `?nocs=1`) makes every `play()` resolve at once; the smoke test uses it. `ui/widgets.js` has `button(ctx, rect, label, opts)` and `hit(rect, x, y, pad)`.
 
 Flow: title → map → play (pause menu: resume, back to flag, sound, music, map) → boss → clear → map.
 
 ## 13. Debug API and smoke test
 
-URL params: `?world=N` (straight into a world), `?debug=1` (exposes `window.__hto`), `?unlock=1` (all worlds open), `?reset=1` (wipe the save), `?touch=1` (show touch buttons on desktop).
+URL params: `?world=N` (straight into a world), `?debug=1` (exposes `window.__hto`), `?unlock=1` (all worlds open), `?reset=1` (wipe the save), `?touch=1` (show touch buttons on desktop), `?nocs=1` (skip story cutscenes; tests), `?a2hs=1` (force the Add to Home Screen tip), `?sw=1` (enable the service worker on localhost).
 
 `window.__hto`:
 
@@ -402,7 +408,7 @@ tools/serve.sh 8101 &                       # python3 -m http.server from the pr
 node tools/smoke.mjs --port 8101 --world 4 --out /tmp/w4-shots --device iphone   # or ipad | desktop
 ```
 
-It fails (exit 1, `ok: false`) on any console error, page error or failed request; checks real keyboard or real touch input (hold Right, second finger Jump, slide to Left, Hat); estimates fps; plays randomly for `--ticks` (1800); visits every checkpoint, spark and the boss arena with a screenshot each (`cp-NN.png`, `spark-N.png`, `boss-arena.png`, `boss-arena-later.png`); then beats the boss via the debug API and expects the clear screen (`--no-flow` skips, `--no-sparks` skips spark shots). It prints a JSON report. **Open the PNGs and look at them.** For mechanics, script your own check with `freeze/step/hold/tap` (pattern: `page.evaluate` a loop that reads `__hto.game` and steps one tick at a time), for example "capture the creature, do the ability, assert the spark is collected".
+The smoke test loads `?world=N&debug=1&reset=1&nocs=1`. It fails (exit 1, `ok: false`) on any console error, page error or failed request; checks real keyboard or real touch input (hold Right, second finger Jump, slide to Left, Hat); estimates fps; plays randomly for `--ticks` (1800); visits every checkpoint, spark and the boss arena with a screenshot each (`cp-NN.png`, `spark-N.png`, `boss-arena.png`, `boss-arena-later.png`); then beats the boss via the debug API and expects the clear screen (`--no-flow` skips, `--no-sparks` skips spark shots). It prints a JSON report. **Open the PNGs and look at them.** For mechanics, script your own check with `freeze/step/hold/tap` (pattern: `page.evaluate` a loop that reads `__hto.game` and steps one tick at a time), for example "capture the creature, do the ability, assert the spark is collected".
 
 ## 14. World checklist
 

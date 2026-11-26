@@ -38,6 +38,14 @@ export class Camera {
   follow(level, p) {
     this.lookX += (((p.facing || 1) * 28) - this.lookX) * 0.04;
     const t = this.targetFor(level, p);
+    // In a boss arena, frame Whisk and the boss together (so the boss is not
+    // off-screen on narrow phone views) while keeping Whisk well inside the view.
+    const f = this.lock && this.lock.focus;
+    if (f && !f.dead && !f.dormant) {
+      const pc = p.x + p.w / 2, m = Math.min(90, view.w * 0.18);
+      const mid = (pc + f.x + f.w / 2) / 2 - view.w / 2;
+      t.x = clamp(mid, pc - view.w + m, pc - m);
+    }
     const px = this.x, py = this.y;
     this.x += (t.x - this.x) * 0.14;
     const dy = t.y - this.y;

@@ -50,6 +50,16 @@ export function drawHud(ctx, game) {
       rrect(ctx, bx + 6 + i * 22, by + 13, 18, 7, 3.5, on ? '#ff5d8f' : 'rgba(36,26,58,0.45)', 1.8);
       if (on) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(bx + 9 + i * 22, by + 14.5, 8, 1.5); }
     }
+    // Boss off-screen (wide arena on a narrow phone view): point the way.
+    const cam = game.cam, bsx = b.x - cam.x, dir = bsx + b.w < 0 ? -1 : bsx > view.w ? 1 : 0;
+    if (dir && !b.dormant) {
+      const bob = Math.sin(game.t * 0.15) * 3;
+      const ax = dir > 0 ? view.w - s.r - 16 + bob : s.l + 16 - bob;
+      const ay = Math.max(top + 56, Math.min(view.h - 70, b.y + b.h / 2 - cam.y));
+      ctx.beginPath();
+      ctx.moveTo(ax + dir * 10, ay); ctx.lineTo(ax - dir * 4, ay - 10); ctx.lineTo(ax - dir * 4, ay + 10); ctx.closePath();
+      ctx.fillStyle = '#ff5d8f'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+    }
   }
 
   // hint box (Mumble). Sits under the top HUD row, clear of the touch buttons.

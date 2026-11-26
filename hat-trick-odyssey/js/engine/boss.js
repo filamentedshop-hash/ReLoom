@@ -112,7 +112,7 @@ export function updateArena(game) {
   const p = game.player, cx = p.x + p.w / 2, cy = p.y + p.h / 2;
   if (cx > a.x0 + 30 && cx < a.x1 && cy > a.y0 && cy < a.y1) {
     a.active = true;
-    game.cam.setLock({ x0: a.x0, x1: a.x1, y0: a.y0, y1: a.y1 });
+    game.cam.setLock({ x0: a.x0, x1: a.x1, y0: a.y0, y1: a.y1, focus: a.boss });
     if (a.boss) {
       a.boss.dormant = false;
       game.audio.music(game.world.bossMusic || 'boss');

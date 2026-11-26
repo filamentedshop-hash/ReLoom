@@ -715,7 +715,7 @@ export const ART = {
     }
     // the wave of colour itself
     const wv = ramp(t, 20, 330);
-    if (wv > 0 && wv < 1) { ctx.lineWidth = 5 * u; for (let k2 = 0; k2 < 5; k2++) { ctx.strokeStyle = CONF[k2]; ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.arc(x0, pad, wv * (W + H) - k2 * 7 * u, 0, Math.PI / 2); ctx.stroke(); } ctx.globalAlpha = 1; }
+    if (wv > 0 && wv < 1) { ctx.lineWidth = 5 * u; for (let k2 = 0; k2 < 5; k2++) { ctx.strokeStyle = CONF[k2]; ctx.globalAlpha = 0.55; ctx.beginPath(); const rr = wv * (W + H) - k2 * 7 * u; if (rr <= 0) continue; ctx.arc(x0, pad, rr, 0, Math.PI / 2); ctx.stroke(); } ctx.globalAlpha = 1; }
   },
   crate(ctx, W, H, t) {
     const gy = world(8, ctx, W, H, t, 1), u = H / 190, cx = W * 0.5;

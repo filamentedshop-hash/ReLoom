@@ -1139,8 +1139,9 @@ function spires(ctx, cam, view, lh, o) {
 function drawBackground(ctx, cam, view, t, game) {
   const lh = game.level.pxH;
   const a = clamp(1 - cam.y / Math.max(1, lh - view.h), 0, 1);       // 0 at base camp, 1 at the summit
-  sky(ctx, view, 'w5lo', SKY_LOW);
-  if (a > 0.01) { ctx.globalAlpha = a; sky(ctx, view, 'w5hi', SKY_HIGH); ctx.globalAlpha = 1; }
+  // (only one full-screen fill once the high sky is fully faded in)
+  if (a < 0.99) sky(ctx, view, 'w5lo', SKY_LOW);
+  if (a > 0.01) { ctx.globalAlpha = a < 0.99 ? a : 1; sky(ctx, view, 'w5hi', SKY_HIGH); ctx.globalAlpha = 1; }
   // pale daytime stars up high
   if (a > 0.6) {
     ctx.fillStyle = aStep(WHITE_A, (a - 0.6) * 1.5);

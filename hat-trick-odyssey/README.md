@@ -27,6 +27,10 @@ Every character, name, drawing, line of text and sound is original.
   them and puts you back at the last flag.
 - Each world has 8 Fun Sparks (the boss holds the last one) and Buttons to
   spend in the hat shop. Progress is saved on the device.
+- Nine worlds: each needs the one before it cleared plus a few Fun Sparks in
+  total. Beating World 8 shows the ending; World 9 is a harder bonus world
+  that opens at 48 Fun Sparks. Story scenes you have seen can be watched again
+  from **Settings → Story**.
 
 ## Run it locally
 
@@ -41,7 +45,7 @@ does not work, because browsers block ES modules on `file://`.
 
 Useful URL parameters: `?world=N` (jump into a world), `?unlock=1` (open every
 world), `?reset=1` (wipe the save), `?touch=1` (show touch buttons on desktop),
-`?debug=1` (debug API, see `CONTRACT.md`).
+`?debug=1` (debug API, see `CONTRACT.md`), `?nocs=1` (skip story scenes).
 
 **Offline cache while developing.** On `localhost` / `127.0.0.1` the service
 worker is switched off so you always see your latest edits. Add `?sw=1` to
@@ -129,7 +133,9 @@ js/main.js              boot, canvas sizing, scene switching, main loop
 js/engine/              engine: loop, input, tiles, levels, physics, player,
                         hat, bosses, audio, save, HUD, debug API
 js/art/                 Canvas 2D drawing helpers and characters
-js/ui/                  title, map, shop, settings, clear screen, cutscenes
+js/ui/                  title, sky map, hat shop, settings, clear screen,
+                        cutscene player, shared menu kit
+js/story/               the story script (every cutscene) and its panel art
 js/worlds/              one module per world (w1.js ... w9.js) + index.js
 tools/serve.sh          local static server
 tools/smoke.mjs         Playwright smoke test for a world
