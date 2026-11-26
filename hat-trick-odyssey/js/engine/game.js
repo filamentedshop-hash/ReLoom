@@ -15,7 +15,22 @@ import { SPARKS_PER_WORLD } from './save.js';
 import { setHatStyle } from '../art/hat.js';
 
 const tileInfo = { tx: 0, ty: 0, level: null, t: 0, theme: null, game: null, def: null };
-let darkCanvas = null;
+let darkCanvas = null, lightCanvas = null;
+const LIGHT_R = 64;
+function lightSprite() {
+  if (lightCanvas) return lightCanvas;
+  lightCanvas = document.createElement('canvas');
+  lightCanvas.width = lightCanvas.height = LIGHT_R * 2;
+  const c = lightCanvas.getContext('2d');
+  const gr = c.createRadialGradient(LIGHT_R, LIGHT_R, LIGHT_R * 0.25, LIGHT_R, LIGHT_R, LIGHT_R);
+  gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = gr; c.fillRect(0, 0, LIGHT_R * 2, LIGHT_R * 2);
+  return lightCanvas;
+}
+function stampLight(d, spr, sx, sy, sr, w, h) {
+  if (sx < -sr || sy < -sr || sx > w + sr || sy > h + sr) return;
+  d.drawImage(spr, sx - sr, sy - sr, sr * 2, sr * 2);
+}
 
 export class Game {
   constructor(app, world) {
@@ -562,16 +577,12 @@ export class Game {
     d.fillStyle = this.darkColor || '#120c24';
     d.fillRect(0, 0, w, h);
     d.globalCompositeOperation = 'destination-out';
-    const hole = (x, y, r) => {
-      const sx = (x - cam.x) * S, sy = (y - cam.y) * S, sr = r * S;
-      if (sx < -sr || sy < -sr || sx > w + sr || sy > h + sr) return;
-      const gr = d.createRadialGradient(sx, sy, sr * 0.25, sx, sy, sr);
-      gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      d.fillStyle = gr; d.beginPath(); d.arc(sx, sy, sr, 0, 6.2832); d.fill();
-    };
-    if (p.light > 0) hole(p.x + p.w / 2, p.y + p.h / 2, p.light);
+    // Light holes: one cached soft-disc sprite stamped with destination-out
+    // (no gradient or closure created per frame).
+    const spr = lightSprite();
+    if (p.light > 0) stampLight(d, spr, (p.x + p.w / 2 - cam.x) * S, (p.y + p.h / 2 - cam.y) * S, p.light * S, w, h);
     const A = this.active;
-    for (let i = 0; i < A.length; i++) { const e = A[i]; if (e.light > 0 && !e.hidden) hole(e.x + e.w / 2, e.y + e.h / 2, e.light); }
+    for (let i = 0; i < A.length; i++) { const e = A[i]; if (e.light > 0 && !e.hidden) stampLight(d, spr, (e.x + e.w / 2 - cam.x) * S, (e.y + e.h / 2 - cam.y) * S, e.light * S, w, h); }
     ctx.globalAlpha = Math.min(1, this.darkness);
     ctx.drawImage(darkCanvas, 0, 0, w, h, 0, 0, view.w, view.h);
     ctx.globalAlpha = 1;
