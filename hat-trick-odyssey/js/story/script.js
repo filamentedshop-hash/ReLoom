@@ -93,7 +93,7 @@ S['pre-w2'] = { title: 'Fizzlewump Falls', panels: [
   { art: 'mumble', a: { n: 2 }, lines: [
     '"Mind the fizz!" Mumble called from a rock.',
     '"It tickles your whiskers and soaks through your sock!',
-    'But the splashers who live here can bob, swim, and spray.',
+    'But the splashers who live here can swim, pop, and spray.',
     'Borrow their tricks with your hat. That\'s the way!"' ] },
 ] };
 S['post-w2'] = { title: 'Fizz Restored', music: 'clear', panels: [
@@ -145,7 +145,7 @@ S['pre-w4'] = { title: 'Snoozle Sands', panels: [
   { art: 'mumble', a: { n: 4 }, lines: [
     '"Tiptoe," yawned Mumble, "and try not to peep.',
     'The big ones get grumpy when woken from sleep.',
-    'But the small ones who burrow, or roll, or stay bright',
+    'But the small ones who burrow, or ring loud and bright,',
     'will lend you a paw if you hat them just right."' ] },
 ] };
 S['post-w4'] = { title: 'Wide Awake', music: 'clear', panels: [
@@ -223,7 +223,7 @@ S['pre-w7'] = { title: 'Neon Nobble City', panels: [
   { art: 'mumble', a: { n: 7 }, lines: [
     '"It\'s dark," whispered Mumble, "and darker in there.',
     'I\'ll wait with a tip by each lamp on the stair.',
-    'Find the ones who can glow, or can zip down a wire.',
+    'Find the beetle-cab racer, the spark on the wire.',
     'With a hat on their heads, they\'ll lift the lights higher."' ] },
 ] };
 S['post-w7'] = { title: 'Lights On', music: 'clear', panels: [

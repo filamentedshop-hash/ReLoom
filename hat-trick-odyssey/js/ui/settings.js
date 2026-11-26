@@ -6,6 +6,8 @@
 // Settings keys: sfx, music (bool), volume (0..1), shake (bool; false = less
 // motion), plus two owned by the UI: touchSize ('s' | 'm' | 'l'), lefty (bool).
 // Keys: Left/Right move, Jump changes, Hat = done.
+// The Story button opens a small replay picker over the scenes already seen
+// (cutscenes.gallery() / cutscenes.replay(id)).
 import { view, INK } from '../engine/const.js';
 import { text, rrect, outline } from '../art/draw.js';
 import { sky, cloud, scatter } from '../art/bg.js';
@@ -20,15 +22,16 @@ const ROWS = [
   { key: 'lefty', label: 'Left-handed', type: 'toggle', col: 1 },
   { key: 'motion', label: 'Less motion', type: 'toggle', col: 1 },
 ];
-const F_RESET = ROWS.length, F_DONE = ROWS.length + 1;
+const F_RESET = ROWS.length, F_STORY = ROWS.length + 1, F_DONE = ROWS.length + 2;
 const SIZES = ['s', 'm', 'l'];
 const STEPS = 5, ROW_H = 36, ROW_GAP = 8, CTRL_W = 118;
 const rr = { x: 0, y: 0, w: 0, h: 0 }, cr = { x: 0, y: 0, w: 0, h: 0 };
 
 export const settingsScene = {
   t: 0, focus: F_DONE, keys: false, from: 'map', confirm: false, confirmT: 0, confirmSel: 0,
+  story: null, storyI: 0, storySel: 1, storyT: 0,
   enter(app, p) {
-    this.t = 0; this.focus = F_DONE; this.keys = false; this.confirm = false;
+    this.t = 0; this.focus = F_DONE; this.keys = false; this.confirm = false; this.story = null;
     this.from = p && p.from === 'title' ? 'title' : 'map';
   },
 
@@ -56,6 +59,32 @@ export const settingsScene = {
     else this.set(app, r.key, SIZES[(SIZES.indexOf(v) + 1) % SIZES.length]);
   },
   done(app) { app.audio.sfx('uiBack'); app.go(this.from); },
+  openStory(app) {
+    let list = [];
+    try { list = app.cutscenes.gallery().filter((g) => g.seen); } catch (e) { list = []; }
+    this.story = list; this.storyI = Math.max(0, list.length - 1); this.storySel = 1; this.storyT = this.t;
+    app.audio.sfx('ui');
+  },
+  playStory(app) {
+    const g = this.story && this.story[this.storyI];
+    if (!g) return;
+    app.audio.sfx('ui');
+    try { app.cutscenes.replay(g.id); } catch (e) { app.logError(e); }
+  },
+  storyStep(app, d) {
+    if (!this.story || !this.story.length) return;
+    this.storyI = (this.storyI + d + this.story.length) % this.story.length; app.audio.sfx('ui');
+  },
+  storyRects() {
+    const w = Math.min(330, view.w - 40), h = 132, x = view.w / 2 - w / 2, y = Math.max(view.safe.t + 8, view.h / 2 - h / 2 - 6);
+    return {
+      box: { x, y, w, h },
+      prev: { x: x + 12, y: y + 44, w: 34, h: 32 },
+      next: { x: x + w - 46, y: y + 44, w: 34, h: 32 },
+      back: { x: x + 14, y: y + h - 46, w: w / 2 - 20, h: 34 },
+      play: { x: x + w / 2 + 6, y: y + h - 46, w: w / 2 - 20, h: 34 },
+    };
+  },
   askReset(app) { this.confirm = true; this.confirmT = this.t; this.confirmSel = 0; app.audio.sfx('pause'); },
   doReset(app) {
     app.save.reset();
@@ -76,6 +105,7 @@ export const settingsScene = {
     return {
       colW, x0, x1, y0,
       reset: { x: x0, y: by, w: Math.min(130, colW), h: 36 },
+      story: { x: view.w / 2 - Math.min(90, colW * 0.6) / 2 , y: by, w: Math.min(90, colW * 0.6), h: 36 },
       done: { x: x1 + colW - Math.min(150, colW), y: by, w: Math.min(150, colW), h: 36 },
     };
   },
@@ -99,6 +129,12 @@ export const settingsScene = {
     this.t++;
     const inp = app.input;
     const d = (inp.pressed('right') ? 1 : 0) - (inp.pressed('left') ? 1 : 0);
+    if (this.story) {
+      if (d) { this.keys = true; this.storyStep(app, d); }
+      if (this.t - this.storyT > 10 && inp.pressed('jump')) this.playStory(app);
+      else if (inp.pressed('hat') || inp.pressed('pause')) { this.story = null; app.audio.sfx('uiBack'); }
+      return;
+    }
     if (this.confirm) {
       if (d) { this.confirmSel = 1 - this.confirmSel; this.keys = true; app.audio.sfx('ui'); }
       if (this.t - this.confirmT > 12 && inp.pressed('jump')) { if (this.confirmSel === 1) this.doReset(app); else { this.confirm = false; app.audio.sfx('uiBack'); } }
@@ -108,12 +144,22 @@ export const settingsScene = {
     if (d) { this.keys = true; this.focus = (this.focus + d + F_DONE + 1) % (F_DONE + 1); app.audio.sfx('ui'); }
     if (this.t > 10 && inp.pressed('jump')) {
       this.keys = true;
-      if (this.focus === F_DONE) this.done(app); else if (this.focus === F_RESET) this.askReset(app); else this.cycle(app, this.focus);
+      if (this.focus === F_DONE) this.done(app); else if (this.focus === F_RESET) this.askReset(app);
+      else if (this.focus === F_STORY) this.openStory(app); else this.cycle(app, this.focus);
     } else if (this.t > 10 && (inp.pressed('hat') || inp.pressed('pause'))) this.done(app);
   },
   pointer(app, kind, x, y) {
     if (kind !== 'down') return;
     this.keys = false;
+    if (this.story) {
+      if (this.t - this.storyT < 10) return;
+      const C = this.storyRects();
+      if (hit(C.prev, x, y, 4)) return this.storyStep(app, -1);
+      if (hit(C.next, x, y, 4)) return this.storyStep(app, 1);
+      if (hit(C.play, x, y, 3)) return this.playStory(app);
+      if (hit(C.back, x, y, 3) || !hit(C.box, x, y, 0)) { this.story = null; app.audio.sfx('uiBack'); }
+      return;
+    }
     if (this.confirm) {
       if (this.t - this.confirmT < 15) return;
       const C = this.confirmRects();
@@ -124,6 +170,7 @@ export const settingsScene = {
     const L = this.layout();
     if (hit(L.done, x, y, 6)) return this.done(app);
     if (hit(L.reset, x, y, 6)) return this.askReset(app);
+    if (hit(L.story, x, y, 4)) return this.openStory(app);
     for (let i = 0; i < ROWS.length; i++) {
       const r = this.row(L, i);
       if (!hit(r, x, y, ROW_GAP / 2 - 0.5)) continue;
@@ -177,10 +224,24 @@ export const settingsScene = {
     text(ctx, 'Settings', view.w / 2, Math.max(s.t + 30, L.y0 - 14), 21, '#ffe27a', 'center', 900);
     for (let i = 0; i < ROWS.length; i++) this.drawRow(ctx, app, L, i);
     btn(ctx, L.reset, 'Reset Save', { kind: 'danger', size: 12.5, focus: this.keys && this.focus === F_RESET });
+    btn(ctx, L.story, 'Story', { size: 13, focus: this.keys && this.focus === F_STORY });
     btn(ctx, L.done, 'Done', { kind: 'primary', size: 16, focus: this.keys && this.focus === F_DONE });
     // Mumble keeps an eye on things when there is room
     if (view.h - s.b - (L.done.y + 44) > 34) drawMumble(ctx, view.w / 2, view.h - s.b - 8, { t, scale: 1.3 });
 
+    if (this.story) {
+      const C = this.storyRects(), b = C.box, list = this.story, g = list[this.storyI];
+      ctx.fillStyle = 'rgba(36,26,58,0.72)'; ctx.fillRect(0, 0, view.w, view.h);
+      panel(ctx, b.x, b.y, b.w, b.h, '#fffaf0', 12);
+      text(ctx, 'Story so far', view.w / 2, b.y + 26, 17, '#6a4bc4', 'center', 900, null);
+      if (g) {
+        btn(ctx, C.prev, '<', { size: 15 }); btn(ctx, C.next, '>', { size: 15 });
+        text(ctx, g.title, view.w / 2, C.prev.y + 15, 13, INK, 'center', 900, null);
+        text(ctx, (this.storyI + 1) + ' of ' + list.length, view.w / 2, C.prev.y + 29, 10, '#8a84a0', 'center', 800, null);
+      } else text(ctx, 'No scenes seen yet. Go and play!', view.w / 2, C.prev.y + 20, 11.5, INK, 'center', 800, null);
+      btn(ctx, C.back, 'Back', { size: 14 });
+      btn(ctx, C.play, 'Watch', { kind: 'go', size: 14, focus: this.keys, disabled: !g });
+    }
     if (this.confirm) {
       const C = this.confirmRects(), b = C.box;
       ctx.fillStyle = 'rgba(36,26,58,0.72)'; ctx.fillRect(0, 0, view.w, view.h);

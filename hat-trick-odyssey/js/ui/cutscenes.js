@@ -45,6 +45,7 @@ function sfx(name) { try { if (name) audio.sfx(name); } catch (e) { /* ignore */
 
 export const cutscenes = {
   active: false,
+  disabled: false,   // ?nocs=1 (tests): every play() resolves at once
   id: '',            // canonical id of the scene showing
   scene: null,
   index: 0,          // panel index
@@ -61,7 +62,7 @@ export const cutscenes = {
     let id = null;
     try { id = canonicalId(sceneId); } catch (e) { id = null; }
     const force = !!(opts && opts.force);
-    if (!id || this.active || (!force && isSeen(id))) return Promise.resolve(sceneId);
+    if (!id || this.active || this.disabled || (!force && isSeen(id))) return Promise.resolve(sceneId);
     const scene = SCENES[id];
     if (!scene || !scene.panels || !scene.panels.length) return Promise.resolve(sceneId);
     markSeen(id);

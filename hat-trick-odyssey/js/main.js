@@ -13,6 +13,7 @@ import { shopScene } from './ui/shop.js';
 import { settingsScene } from './ui/settings.js';
 import { clearScene } from './ui/clear.js';
 import { cutscenes } from './ui/cutscenes.js';
+import { applyUiPrefs } from './ui/kit.js';
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById('game');
@@ -58,6 +59,7 @@ export const app = {
     const s = save.data.settings;
     audio.setVolume(s.volume); audio.setSfxEnabled(s.sfx); audio.setMusicEnabled(s.music);
     view.reducedMotion = (motionQuery && motionQuery.matches) || s.shake === false;
+    applyUiPrefs(save);
   },
   logError(e) {
     const msg = (e && e.stack) ? String(e.stack) : String(e);
@@ -148,6 +150,7 @@ window.addEventListener('unhandledrejection', (e) => app.logError(e.reason));
 save.load();
 if (params.get('unlock') === '1') save.unlockAll = true;
 if (params.get('reset') === '1') save.reset();
+if (params.get('nocs') === '1') cutscenes.disabled = true;   // tests: skip story scenes
 app.applySettings();
 input.init();
 input.onFirstGesture = () => { audio.unlock(); resize(); };

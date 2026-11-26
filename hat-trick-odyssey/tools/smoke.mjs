@@ -46,7 +46,7 @@ try {
   const shot = async (name) => { const f = path.join(out, name + '.png'); await page.screenshot({ path: f }); report.screenshots.push(f); };
   const H = (fn, arg) => page.evaluate(fn, arg);
 
-  report.url = `http://127.0.0.1:${port}/index.html?world=${world}&debug=1&reset=1`;
+  report.url = `http://127.0.0.1:${port}/index.html?world=${world}&debug=1&reset=1&nocs=1`;
   await page.goto(report.url, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__hto && window.__hto.game, null, { timeout: 15000 });
   await page.waitForTimeout(400);

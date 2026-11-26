@@ -68,7 +68,7 @@ export function drawHud(ctx, game) {
   }
 
   // toast
-  if (game.toastT > 0 && game.toastText) {
+  if (game.toastT > 0 && game.toastText && !game.paused) {
     const a2 = Math.min(1, game.toastT / 15, (game.toastMax - game.toastT) / 8 + 0.2);
     ctx.globalAlpha = Math.max(0, Math.min(1, a2));
     const y = view.h * 0.3 - (1 - Math.min(1, (game.toastMax - game.toastT) / 10)) * 6;

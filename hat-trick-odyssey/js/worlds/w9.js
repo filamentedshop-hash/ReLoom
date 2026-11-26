@@ -9,13 +9,14 @@
 //      over a wide crater and up through a marble-glass ceiling.
 //   4. TWIRLY TOP (new capture): hop, then Jump in mid-air for a whirling
 //      dash that smashes candy-striped toy blocks and pops enemies.
-//   5. YARN YO-YO (new capture): Jump near a hook to catch on, HOLD Jump to
-//      reel up the yarn, Left/Right to pump the swing, Jump again to let go.
+//   5. YARN YO-YO (new capture): Jump near a hook to catch on (the yarn
+//      winds itself up), Left/Right to pump the swing, Jump again to let go.
 //   6. PUFFPOT (w6) up a block chimney (hold Jump in mid-air to steam).
 //   7. Capture-to-capture transfers in mid-air: Puffcloud -> Twirly Top
 //      (dash through a wall) -> Yarn Yo-Yo (swing to safety).
 //   8. Hat Trick chains over a safe floor: catch the hat while still rising
-//      and throw it again.
+//      and throw it again (optional expert line; a single-trick step is the
+//      main path).
 //   Boss: THE MESS MONSTER, a heap of lost toys and laundry with button eyes.
 //   It slams a sock-arm down; while the sock lies limp, tidy it into the
 //   giant toy chest: sock 1 with a Twirly Top dash, sock 2 yanked by a Yarn
@@ -24,7 +25,7 @@
 // Imported creatures are looked up in the shared registry when the level is
 // built; if another world ever renames one, a stand-in with a similar ability
 // is used instead (see pickCreature) so the level stays beatable.
-import { TILE, INK, PHYS, clamp, lerp, approach, hash2 } from '../engine/const.js';
+import { TILE, INK, clamp, lerp, hash2 } from '../engine/const.js';
 import { defineEntity, getDef } from '../engine/entities.js';
 import { defineTile } from '../engine/tiles.js';
 import { stepBody, edgeAhead } from '../engine/physics.js';
@@ -111,10 +112,10 @@ defineEntity('w9_hook', {
 
 // ============================================================== YARN YO-YO
 // Capture: walks and hops a little. Jump near a hook (in range, glowing ring)
-// = catch on. HOLD Jump = reel up the yarn. Left/Right = pump. Jump again =
-// let go with a snappy flick. Captured in mid-air under a hook, it starts
-// swinging right away.
-const YO_RANGE = 150, YO_MINLEN = 38, YO_MAXLEN = 150;
+// = catch on; the yarn winds itself up to a comfy length. Left/Right = pump
+// the swing. Jump again = let go with a snappy flick. Captured in mid-air
+// under a hook, it starts swinging right away.
+const YO_RANGE = 150, YO_MINLEN = 38, YO_MAXLEN = 150, YO_COMFY = 80;
 
 function drawYoyo(ctx, cx, cy, e, spin, mood) {
   ctx.save(); ctx.translate(cx, cy);
@@ -173,8 +174,8 @@ function yoLetGo(p, game) {
   const d = p.data;
   if (!d.hook) return;
   d.hook = null;
-  p.vy = Math.min(p.vy, 0) - 2.6;                         // the snap: a flick upwards
-  p.vx *= 1.12;
+  p.vy = Math.min(p.vy, 0) - 5;                           // the snap: a flick upwards
+  p.vx *= 1.2;
   p.jumping = false;
   game.sfx('whoosh');
   game.fx.puff(p.x + p.w / 2, p.y + p.h / 2, '#ffd23f', 4);
@@ -206,7 +207,7 @@ defineEntity('w9_yoyo', {
     onEnter(p, game, e) {
       const d = p.data;
       d.hook = null; d.len = 0; d.spin = 0; d.yankT = 0; d.reel = false;
-      if (!game.data.toldYo) { game.data.toldYo = true; game.toast('Yarn Yo-Yo! Jump near a hook, hold to reel!', 150); }
+      if (!game.data.toldYo) { game.data.toldYo = true; game.toast('Yarn Yo-Yo! Jump near a hook to swing!', 150); }
       // captured under a hook (its home): start swinging on it straight away
       let best = null, bd = 200 * 200;
       const A = game.active, cx = e.x + e.w / 2, cy = e.y + e.h / 2;
@@ -239,20 +240,19 @@ defineEntity('w9_yoyo', {
         }
       }
       if (!d.hook) return false;
-      if (!c.jumpHeld) d.reel = false;
       // ---- swinging on the yarn
       const hx = d.hook.x + d.hook.w / 2, hy = d.hook.y + d.hook.h / 2;
       const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
       let vx = p.vx, vy = p.vy + p.mv.gravity * game.gravityScale * g;
-      if (c.dir) { vx += c.dir * 0.13; p.facing = c.dir; }
-      vx *= 0.996; vy *= 0.996;
-      if (d.reel && c.jumpHeld) d.len = Math.max(YO_MINLEN, d.len - 2.4);
+      if (c.dir) { vx += c.dir * 0.2; p.facing = c.dir; }
+      vx *= 0.998; vy *= 0.998;
+      if (d.len > YO_COMFY) d.len = Math.max(YO_COMFY, d.len - 1.6);   // wind up the yarn
       let nx = cx + vx, ny = cy + vy;
       const dx = nx - hx, dy = ny - hy, dist = Math.hypot(dx, dy);
       if (dist > d.len && dist > 0.01) { nx = hx + dx / dist * d.len; ny = hy + dy / dist * d.len; }
       vx = nx - cx; vy = ny - cy;
       const sp = Math.hypot(vx, vy);
-      if (sp > 8.5) { vx *= 8.5 / sp; vy *= 8.5 / sp; }
+      if (sp > 9) { vx *= 9 / sp; vy *= 9 / sp; }
       if (p.onGround && !c.dir) vx *= 0.85;
       p.vx = vx; p.vy = vy; p.noGravity = true;
       return true;
@@ -267,9 +267,9 @@ defineEntity('w9_yoyo', {
 
 // ============================================================== TWIRLY TOP
 // Capture: runs, hops (jumpVel 8). Jump in mid-air = a whirling dash (6.6
-// px/frame for 18 frames, no gravity) that smashes toy blocks and pops
+// px/frame for 22 frames, no gravity) that smashes toy blocks and pops
 // enemies. One dash per landing.
-const DASH_FRAMES = 18, DASH_SPEED = 6.6;
+const DASH_FRAMES = 22, DASH_SPEED = 6.6;
 
 function drawTop(ctx, x, y, e, spin, dashing, tilt) {
   ctx.save(); ctx.translate(x, y);
@@ -480,7 +480,7 @@ const SOCKS = [
 const SOCK_DASH = [7, 6];
 
 defineEntity('w9_chest', {
-  w: 96, h: 52, anchor: 'cell', solid: true, layer: -1,
+  w: 96, h: 52, anchor: 'cell', layer: -1,
   init(e, game) { e.y += TILE * 2 - e.h; e.homeY = e.y; e.gulp = 0; e.got = 0; e.always = true; game.data.chest = e; },
   update(e) { if (e.gulp > 0) e.gulp--; },
   draw(ctx, e, game) {
@@ -633,7 +633,10 @@ const MM_STEPS = [
       const p = game.player, k = e.armK, g = p.gdir;
       const hx0 = e.hx - 22, hx1 = e.hx + 22, hy0 = e.hy - 16, hy1 = e.hy + 8;
       const over = p.x < hx1 && p.x + p.w > hx0 && p.y < hy1 && p.y + p.h > hy0;
-      if (k === 0 && over && p.form === 'w9_top' && p.data.dash > 0) { tidySock(e, game); return; }
+      // a whirl anywhere up to about four tiles over the limp sock knocks it
+      // loose: a Top dashes at the top of its hop (feet ~90px up), and that
+      // natural hop-then-whirl must count, not only a frame-tight low dash
+      if (k === 0 && p.form === 'w9_top' && p.data.dash > 0 && p.x < hx1 + 6 && p.x + p.w > hx0 - 6 && p.y < hy1 && p.y + p.h > hy0 - 100) { tidySock(e, game); return; }
       if (k === 2 && over && p.form === 'springle' && p.vy * g > 0.3 && p.y + p.h - p.vy <= hy0 + 10) {
         p.vy = -9 * g; p.jumping = false; game.sfx('bounce'); tidySock(e, game); return;
       }
@@ -770,7 +773,7 @@ defineBoss('w9_messmonster', {
   },
   onDefeated(e, game) {
     game.data.yoExtra.on = false; game.data.bossDone = true;
-    game.toast('All tidy! The Mess Monster giggles!', 150);
+    game.toast('All tidy! You earned the Golden Topper!', 90);
     game.sfx('laugh');
     try { game.save.setFlag('goldenHat', true); } catch (err) { /* ignore */ }
   },
@@ -827,7 +830,7 @@ function build(L) {
   flag(55);
 
   // ---------------------------------------------------------------- B: old friends (58-125)
-  G(58, 83); G(92, 125, 16);
+  G(58, 83); G(90, 125, 16);
   hint(61, 'Lost things float up here, it\'s true:\nold friends! A Springle waits for you.');
   L.spawn('springle', 65, STAND);
   B(70, 10, 4, 9);                                       // the block tower (9 tall)
@@ -835,12 +838,13 @@ function build(L) {
   spark(75, 2);                                          // a Springle jump from the tower top
   row(70, 73, 8);
   // cork corner: glass-floored secret room, then the wide crater
-  hint(75, 'A Cork! Hold Jump, then let it go.\nLean while you launch to rocket just so!');
+  flag(74);                                              // retries of the crater start past the tower
+  hint(76, 'A Cork! Hold Jump, then let it go.\nLean while you launch to rocket just so!');
   creature(CORK, 77);
   B(78, 10, 1, 5); B(81, 10, 1, 5); B(79, 10, 2, 1);      // secret room with a marble-glass floor
   L.fill(CORK === 'w2_cork' ? 'w9_glass' : 'crack', 79, 14, 2, 1);
-  spark(79, 12);
-  arc(84, 14, 92, 12, 7, 2.5);
+  L.spawnPx('spark', 80 * TILE - 9, 12 * TILE + 3);
+  arc(84, 14, 90, 12, 6, 2.5);
   L.spawn('w9_spacegloom', 104, 15, { dir: -1 });
   L.spawn('w9_chute', 124, 14, { dir: -1, period: 170 });
   row(100, 104, 12);
@@ -848,7 +852,7 @@ function build(L) {
   flag(121, 15);
 
   // ---------------------------------------------------------------- C: Twirly Top (126-185)
-  G(126, 149); G(157, 187, 17);
+  G(126, 149); G(156, 187);
   hint(129, 'Hop with the Top, then Jump midair:\nit whirls through toy blocks without a care!');
   L.spawn('w9_top', 133, STAND);
   B(137, 0, 2, 19, 'w9_toyblock');                       // the first toy wall
@@ -857,20 +861,20 @@ function build(L) {
   B(143, 8, 4, 1); B(143, 13, 4, 1); B(146, 9, 1, 4); B(143, 9, 1, 1); B(143, 12, 1, 1); B(143, 10, 1, 2, 'w9_toyblock');
   spark(144, 11);
   arc(139, 17, 142, 12, 3, 1);
-  arc(149, 16, 157, 15, 6, 3);
-  B(157, 0, 1, 17, 'w9_toyblock');                       // wall at the far edge of the pit
-  L.spawn('w9_tangle', 166, 16);
-  L.spawn('w9_spacegloom', 172, 16);
-  row(163, 167, 13);
-  L.spawn('w9_chute', 187, 15, { dir: -1, period: 160, phase: 60 });
-  flag(185, 16);
+  arc(150, 17, 155, 16, 5, 2.5);
+  B(156, 0, 1, 19, 'w9_toyblock');                       // wall at the far edge of the pit
+  L.spawn('w9_tangle', 166, STAND);
+  L.spawn('w9_spacegloom', 172, STAND);
+  row(163, 167, 15);
+  L.spawn('w9_chute', 187, 17, { dir: -1, period: 160, phase: 60 });
+  flag(185);
 
   // ---------------------------------------------------------------- D: Yarn Yo-Yo + Puffpot (188-252)
   G(188, 197); G(223, 252);
-  hint(190, 'Yarn Yo-Yo loves a hook up high.\nJump to catch, hold to reel, Jump to fly!');
+  hint(190, 'Yarn Yo-Yo loves a hook up high.\nJump to catch, swing, then Jump to fly!');
   hook(195, 11); yoyo(195, 11, 118);
   hook(201, 10); hook(207, 10); hook(213, 10); hook(219, 10);
-  spark(207, 15);                                        // only a long, low swing passes here
+  spark(219, 7);                                         // pump hard on the fourth hook and fling up
   arc(198, 12, 222, 12, 13, 2.5);
   hint(226, 'A Puffpot! Hold Jump up in the air\nand steam your way up the chimney stair.');
   creature(POT, 229);
@@ -881,28 +885,35 @@ function build(L) {
   L.spawn('w9_spacegloom', 249, STAND);
 
   // ---------------------------------------------------------------- E: mid-air transfers (253-305)
-  G(253, 259); L.fill('ground', 260, FLOOR + 1, 33, H - FLOOR - 1); L.fill('spikes', 260, FLOOR, 33, 1); G(293, 305);
+  G(253, 259); L.fill('ground', 260, FLOOR + 1, 37, H - FLOOR - 1); L.fill('spikes', 260, FLOOR, 37, 1); G(297, 305);
   flag(254);
   hint(256, 'Hop out midair, then toss your Hat:\nfrom friend to friend to friend! Imagine that!');
-  L.spawn('puffcloud', 258, 16, { oy: -8 });
+  L.spawn('puffcloud', 258, STAND, { oy: -8 });
   B(268, 14, 2, 1, 'oneway'); L.spawn('w9_top', 268, 13);
-  B(272, 0, 2, 19, 'w9_toyblock');
-  hook(277, 9); yoyo(277, 9, 84);
-  hook(283, 9); hook(289, 9);
-  spark(284, 3);                                         // reel up high on the middle hook, then fling
+  B(272, 0, 1, 19, 'w9_toyblock');
+  hook(280, 9); yoyo(280, 9, 76);
+  hook(286, 9); hook(292, 9);
+  spark(291, 6);                                         // pump on the middle hook, then fling high
   arc(260, 15, 267, 12, 5, 2);
-  arc(278, 13, 292, 15, 7, 2);
+  arc(281, 13, 296, 15, 7, 2);
 
   // ---------------------------------------------------------------- F: Hat Trick tower (306-347)
   G(306, 347);
   flag(299);
   hint(303, 'Moon Hats zip home after each trick, so throw\nagain while you rise: trick, trick, and go!');
-  B(310, 12, 6, 7);                                      // 7 tiles tall: jump + Hat Trick
-  B(324, 7, 6, 1, 'oneway');                             // 5 up, 8 across: another Hat Trick
-  B(344, 6, 3, 1, 'oneway'); spark(345, 5);              // the far ledge: a two-trick chain
-  row(311, 314, 10); arc(317, 10, 323, 5, 5, 1); row(325, 329, 5);
-  L.spawn('w9_chute', 347, 16, { dir: -1, period: 190 });
-  L.spawn('w9_tangle', 320, STAND); L.spawn('w9_tangle', 335, STAND);
+  // a 7-tall tower (jump + Hat Trick), then a basin with a safe floor and a
+  // 10-tall plateau 14 tiles away: only a two-trick chain from the tower top
+  // reaches it. Falling in the basin just means walking back to the tower.
+  B(310, 12, 6, 7);
+  G(330, 338, 9);
+  // a low step at the plateau's foot: one plain Hat Trick from here reaches the
+  // top, so the main path never needs the frame-tight two-trick chain (that
+  // stays the expert line from the tower, and the way to the spark)
+  B(327, 15, 3, 1, 'oneway');
+  spark(324, 4);                                       // the top of a perfect first trick
+  row(311, 315, 10); arc(317, 8, 329, 7, 8, 2.5); row(331, 337, 7);
+  L.spawn('w9_tangle', 322, STAND);
+  L.spawn('w9_chute', 347, 17, { dir: -1, period: 190 });
 
   // ---------------------------------------------------------------- G: boss (348-387)
   G(348, W - 1);
@@ -952,7 +963,7 @@ function drawBackground(ctx, cam, view, t, game) {
     ctx.fillStyle = cols[k];
     ctx.beginPath(); ctx.ellipse(px - 30 + k * 20 + (t * 0.02 % 20), py, 7, 50, 0.3, 0, TAU); ctx.fill();
   }
-  ctx.fillStyle = 'rgba(13,10,38,0.35)'; ctx.beginPath(); ctx.arc(px + 18, py + 14, 50, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(13,10,38,0.22)'; ctx.beginPath(); ctx.arc(px + 22, py + 18, 50, 0, TAU); ctx.fill();
   ctx.restore();
   ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 46, 0, TAU); ctx.stroke();
   // floating lost things drifting past
@@ -1029,10 +1040,9 @@ function onBossDefeated(game, b) {
   const s = game.entities.find((e) => e.type === 'spark' && e.props.boss);
   if (!s) return;
   game.spawn('hint', s.x - 80, s.y + 26, {
-    text: 'You tidied the Moon! Each sock is in place.\nThank you for playing, with a grin on my face!',
+    text: 'You tidied the Moon! What a marvelous sight!\nThe Golden Topper is yours: wear it bright!',
     radius: 140,
   });
-  game.toast('The Golden Topper is yours! Claim it in the Hat Shop.', 200);
   game.sfx('unlock');
 }
 
