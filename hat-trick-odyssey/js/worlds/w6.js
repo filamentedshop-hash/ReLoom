@@ -1218,11 +1218,52 @@ function drawBackground(ctx, cam, view, t, game) {
   hills(ctx, cam, view, { factor: 0.42, base: 30, amp: 22, wave: 190, color: '#f6d79a', seed: 9, levelH: lh, yFactor: 0.28 });
 }
 
+// When the chef is off the right edge of a narrow screen, a little bubble at
+// that edge points at him (and flashes "!" while he winds up a throw).
+function drawOverlay(ctx, view, t, game) {
+  const a = game.arena, cam = game.cam;
+  if (!a || !a.active || a.done || !a.boss || a.boss.dead || a.boss.defeated) return;
+  const b = a.boss, sx = b.x + b.w * 0.5 - cam.x;
+  if (sx < view.w - 6) return;
+  const st = stepName(b, CHEF_STEPS), warn = st === 'windup' || st === 'windup2';
+  const x = view.w - 26 - (view.safe ? view.safe.r : 0) + Math.sin(t * 0.15) * 2;
+  const y = clamp(b.y + 30 - cam.y, 60, view.h - 90);
+  ctx.beginPath(); ctx.moveTo(x + 22, y); ctx.lineTo(x + 10, y - 9); ctx.lineTo(x + 10, y + 9); ctx.closePath();
+  ctx.fillStyle = warn ? '#ff5d8f' : '#9b6dff'; ctx.fill(); outline(ctx, 2); ctx.stroke();
+  blob(ctx, x, y, 11, 11, warn ? '#fffaf0' : '#9b6dff', 2);
+  if (warn) text(ctx, '!', x, y + 4.5, 13, '#ff5d8f', 'center', 900, null);
+  else {                                    // a tiny chef toque
+    ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.arc(x - 3.5, y - 2, 4, 0, TAU); ctx.arc(x + 3.5, y - 2, 4, 0, TAU); ctx.arc(x, y - 5, 4.5, 0, TAU); ctx.fill();
+    ctx.fillRect(x - 5, y, 10, 5); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.strokeRect(x - 5, y, 10, 5);
+  }
+}
+
 // ---- world hooks: stoves, caramel
 function onBossDefeated(game, b) { game.spawn('w6_ovendoor', b.doorX, b.doorY); }
 function onStart(game) { game.data.caramelT = 0; game.data.cut = false; }
+// Back at a flag: every cookie bridge is whole again (no waiting beside a
+// half-eaten bridge after a dip in the custard).
+function onRespawn(game) {
+  const E = game.entities;
+  for (let i = 0; i < E.length; i++) {
+    const e = E[i];
+    if (e.type !== 'w6_cookie') continue;
+    e.state = 0; e.k = 0; e.off = false; e.vy = 0; e.x = e.homeX; e.y = e.homeY;
+  }
+  game.data.caramelT = 0; game.data.cut = false;
+}
+// The arena is wider than most screens and the chef stands at its far end:
+// lean the camera toward him (keeping Whisk well inside the left of the view)
+// so he is on screen as early as possible.
+function arenaLean(game) {
+  const a = game.arena, cam = game.cam, p = game.player;
+  if (!a || !a.active || a.done || !cam) return;
+  const vw = game.view ? game.view.w : 512;
+  cam.lookX = Math.max(cam.lookX, vw / 2 - 72 - p.w / 2);
+}
 function onUpdate(game) {
   const p = game.player, d = game.data, L = game.level;
+  arenaLean(game);
   if (game.state !== 'play') return;
   let stove = 0, caramel = false;
   if (p.onGround && p.gdir > 0) {
@@ -1257,7 +1298,9 @@ export default {
   build,
   drawBackground,
   drawTile,
+  drawOverlay,
   onStart,
   onUpdate,
+  onRespawn,
   onBossDefeated,
 };

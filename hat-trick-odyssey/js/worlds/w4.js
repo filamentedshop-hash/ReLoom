@@ -88,6 +88,17 @@ function drawQuicksand(ctx, x, y, i) {
 }
 defineTile('w4_quicksand', { quicksand: true, animated: true, draw: drawQuicksand });
 
+// SLAB BED: the sandy hollow a sleeping slab lies in. One-way (stand on it from
+// above), so Whisk can never get stuck in the hollow under a slab that is
+// drifting back home.
+function drawBed(ctx, x, y) {
+  ctx.fillStyle = '#f6cf8a'; ctx.fillRect(x, y + 4, TILE, TILE - 4);
+  ctx.fillStyle = '#e8b06d'; ctx.fillRect(x, y + 12, TILE, 3);
+  ctx.fillStyle = '#ffe6b3'; ctx.fillRect(x, y + 2, TILE, 4);
+  ctx.fillStyle = INK; ctx.fillRect(x, y, TILE, 2);
+}
+defineTile('w4_bed', { oneway: true, draw: drawBed });
+
 // Is any soft sand or quicksand cell overlapping this pixel rectangle?
 function sandIn(game, x, y, w, h) {
   const L = game.level;
@@ -220,7 +231,7 @@ defineEntity('w4_clocker', {
       if (c.dir) p.facing = c.dir;
       if (d.want > 0 && d.cool <= 0) {
         d.want = 0; d.cool = 26; d.ringT = 24;
-        if (p.onGround) { p.vy = -5 * p.gdir; p.onGround = false; }
+        if (p.onGround || game.data.qs) { p.vy = -5 * p.gdir; p.onGround = false; }
         ring(game, p.x + p.w / 2, p.y + p.h / 2);
       }
       return true;                                   // no normal jump: Jump is the bell
@@ -421,7 +432,8 @@ defineEntity('w4_slab', {
     if ((e.dx || e.dy) && (e.t % 9) === 0) game.fx.emit(e.x + Math.random() * e.w, e.y + e.h, 0, 0.4, SAND_DOT);
   },
   onRing(e, game, x, y) { if (rectDist(e, x, y) <= RING_R) wake(e, game); },
-  draw(ctx, e) {
+  draw(ctx, e, game) {
+    if (!game.cam.sees(e.x, e.y, e.w, e.h, 40)) return;      // always updated, only drawn near the view
     const x = e.x, y = e.y, w = e.w, h = e.h, t = e.t;
     rrect(ctx, x + 1, y, w - 2, h, 5, '#dcc7a2', 2);
     ctx.fillStyle = '#c3a982'; ctx.fillRect(x + 4, y + h - 6, w - 8, 3);
@@ -471,7 +483,8 @@ defineEntity('w4_cactus', {
     }
   },
   onRing(e, game, x, y) { if (rectDist(e, x, y) <= RING_R) wake(e, game); },
-  draw(ctx, e) {
+  draw(ctx, e, game) {
+    if (!game.cam.sees(e.x - 16, e.y - 30, e.w + 32, e.h + 30, 40)) return;
     const cx = e.x + e.w / 2, bot = e.bottom, h = e.h, g = ease(e.grow), t = e.t;
     const top = bot - h, sq = e.boing > 0 ? Math.sin(e.boing * 0.6) * 2.5 : 0;
     const armY = top + h * 0.42, lift = -12 * g + 7 * (1 - g);
@@ -539,7 +552,8 @@ defineEntity('w4_dust', {
     game.fx.burst(e.x + e.w / 2, e.y + e.h / 2, { n: 14, speed: 2.6, color: '#d9c2ff', life: 30, size: 4, g: 0, shape: 'dot' });
     game.sfx('pop');
   },
-  draw(ctx, e) {
+  draw(ctx, e, game) {
+    if (!game.cam.sees(e.x - 16, e.y - 20, e.w + 32, e.h + 30, 40)) return;
     const cx = e.x + e.w / 2, cy = e.y + e.h / 2, t = e.t;
     if (e.poof > 0) {
       if (e.poof < 60 && ((t >> 2) & 1)) { ctx.fillStyle = 'rgba(201,182,255,0.35)'; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, TAU); ctx.fill(); }
@@ -571,7 +585,8 @@ defineEntity('w4_dust', {
 // ============================================================== PILLOW-WEEDS
 // Tumbling pillow-weeds: hop-roll along, hurt on touch, pop into feathers when
 // stomped or hatted. Sink in quicksand, give up at the second wall they bump.
-function drawWeed(ctx, e) {
+function drawWeed(ctx, e, game) {
+  if (!game.cam.sees(e.x, e.y, e.w, e.h, 40)) return;
   const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(e.rot);
   rrect(ctx, -7.5, -7.5, 15, 15, 5, '#fff3ea', 2);
@@ -603,7 +618,7 @@ defineEntity('w4_weed', {
 function poofWeed(e, game) { e.dead = true; game.fx.puff(e.x + e.w / 2, e.y + e.h / 2, '#fff3ea', 6); }
 
 // Invisible spawner that sends pillow-weeds tumbling in from the right.
-// props: every (frames), vx, phase
+// props: every (frames), vx, phase, near (tiles: only spawns while Whisk is this close)
 defineEntity('w4_weedspawn', {
   w: 16, h: 16,
   init(e) { e.clock = e.props.phase || 0; },
@@ -611,7 +626,8 @@ defineEntity('w4_weedspawn', {
     if (++e.clock < (e.props.every || 170)) return;
     e.clock = 0;
     const p = game.player, vx = e.props.vx || -1.3;
-    if (game.state !== 'play' || Math.abs(p.x - e.x) > 560 || (vx < 0 && p.x > e.x)) return;
+    const reach = (e.props.near || 23) * TILE;           // only once Whisk is close (not while he learns the cactus)
+    if (game.state !== 'play' || Math.abs(p.x - e.x) > reach || (vx < 0 && p.x > e.x)) return;
     game.spawn('w4_weed', e.x, e.y, { vx, life: e.props.life || 560 });
     game.sfx('roll');
   },
@@ -1080,9 +1096,10 @@ function build(L) {
   // 3 and 4 are sideways ferries over bottomless gaps.
   L.on('1', 'w4_slab', { tiles: 2, dy: -5 });
   L.on('2', 'w4_slab', { tiles: 2, dy: -5 });
+  for (const ch of ['1', '2']) { const m = L.mark(ch); L.set(m.tx, m.ty, 'w4_bed'); L.set(m.tx + 1, m.ty, 'w4_bed'); }
   L.on('3', 'w4_slab', { tiles: 2, dx: 8, speed: 1.1 });
   L.on('4', 'w4_slab', { tiles: 2, dx: 7, speed: 1.1 });
-  L.on('5', 'w4_weedspawn', { every: 190, vx: -1.3 });
+  L.on('5', 'w4_weedspawn', { every: 190, vx: -1.3, near: 15 });
   // Drowsy dust over the four gaps: each bobs up and down on its own rhythm.
   L.on('6', 'w4_dust', (i) => ({ bobY: 2, period: 200, phase: i * 0.27 }));
   L.on('7', 'w4_dust', { bobY: 1, period: 170 });
@@ -1133,7 +1150,7 @@ function onUpdate(game) {
   const d = game.data, p = game.player;
   if (d.drowsy > 0) {
     d.drowsy--;
-    if (p.form === 'whisk' && !p.cap) p.mv = DROWSY_MV;
+    if (p.form === 'whisk' && !p.cap && (p.onGround || p.mv === DROWSY_MV)) p.mv = DROWSY_MV;   // kicks in on landing, never mid-leap
     if (d.drowsy === 0 && p.mv === DROWSY_MV) p.mv = PHYS;
     if ((game.t % 16) === 0 && p.form === 'whisk') game.fx.emit(p.x + p.w / 2, p.y, (Math.random() - 0.5) * 0.6, -0.5, DROWSY_DOT);
   } else if (p.mv === DROWSY_MV) p.mv = PHYS;
@@ -1166,7 +1183,7 @@ function drawSandstone(ctx, x, y, i) {
   ctx.fillStyle = th.groundDark; ctx.fillRect(x, y + 15 + (ty % 3) * 2, TILE, 3);
   ctx.fillStyle = th.groundSpeck; ctx.fillRect(x + 3 + ((r * 97) % 14 | 0), y + 5 + ((r * 53) % 6 | 0), 4, 2);
   const up = L.def(tx, ty - 1);
-  const openU = !up || !up.solid;
+  const openU = !up || (!up.solid && up.name !== 'w4_bed');   // a slab bed sits snugly on the rock
   ctx.fillStyle = INK;
   if (openU) {
     ctx.fillStyle = th.top; ctx.fillRect(x, y, TILE, 8);

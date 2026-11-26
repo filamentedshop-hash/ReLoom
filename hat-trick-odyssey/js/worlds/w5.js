@@ -431,7 +431,7 @@ defineEntity('w5_crumble', {
     if (e.state === 'idle') {
       if (p.riding === e) { e.state = 'shake'; e.k = 0; game.sfx('crumble'); }
     } else if (e.state === 'shake') {
-      if (e.k >= 32) { e.state = 'fall'; e.off = true; e.k = 0; e.fy = 0; e.fvy = 0; game.sfx('w5_rock_crumble'); game.fx.burst(e.x + 12, e.y + 6, { n: 6, speed: 1.6, life: 24, size: 4, g: 0.25, colors: ROCK_BITS }); }
+      if (e.k >= 46) { e.state = 'fall'; e.off = true; e.k = 0; e.fy = 0; e.fvy = 0; game.sfx('w5_rock_crumble'); game.fx.burst(e.x + 12, e.y + 6, { n: 6, speed: 1.6, life: 24, size: 4, g: 0.25, colors: ROCK_BITS }); }
     } else if (e.state === 'fall') {
       e.fvy += 0.4; e.fy += e.fvy;
       if (e.k >= 200) {
@@ -452,7 +452,7 @@ defineEntity('w5_crumble', {
     slab(ctx, e.x + ox, e.y, 0);
     ctx.strokeStyle = INK; ctx.lineWidth = 1.3; ctx.beginPath();          // always cracked: it looks fragile
     ctx.moveTo(e.x + 9 + ox, e.y + 4); ctx.lineTo(e.x + 12 + ox, e.y + 8); ctx.lineTo(e.x + 10 + ox, e.y + 12);
-    if (e.state === 'shake' && e.k > 16) { ctx.moveTo(e.x + 17 + ox, e.y + 3); ctx.lineTo(e.x + 15 + ox, e.y + 9); ctx.lineTo(e.x + 18 + ox, e.y + 10); }
+    if (e.state === 'shake' && e.k > 24) { ctx.moveTo(e.x + 17 + ox, e.y + 3); ctx.lineTo(e.x + 15 + ox, e.y + 9); ctx.lineTo(e.x + 18 + ox, e.y + 10); }
     ctx.stroke();
     if (e.state === 'shake' && (e.k & 3) === 0) { ctx.fillStyle = '#9da2d6'; ctx.fillRect(e.x + 5 + (e.k % 13), e.y + 12 + (e.k % 5), 3, 3); }
   },
@@ -871,7 +871,7 @@ const MAP = [
   '##                                         #####  ##', // 103
   '##                             o                  ##', // 102
   '##                 o*o     o      o     o         ##', // 101
-  '##                #####                CCC        ##', // 100
+  '##                #####                 CCC       ##', // 100
   '##                                   o            ##', // 99
   '##                         o     L     b     o   b##', // 98
   '##                                          CCC   ##', // 97

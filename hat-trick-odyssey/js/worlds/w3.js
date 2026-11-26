@@ -7,7 +7,7 @@
 //   2. Upside-down hazards: ceiling spikes, Gloomlets that walk on ceilings,
 //      grumpy chimneys that cough soot puffs across the street.
 //   3. GRAVITY BROLLY (capture): a floaty umbrella. Tap Jump in mid-air to flip
-//      its gravity (one flip per landing). Falls slowly. Letting go returns
+//      its gravity (one flip per landing, or after a short float). Falls slowly. Letting go returns
 //      Whisk to the town's gravity (the last Flip Gate he walked through).
 //   4. LANKY LAMP (capture): a shy lamppost. Hold Jump to stretch up to 10
 //      tiles tall (lights hanging glow-bulbs, which open doors and cages).
@@ -27,6 +27,7 @@ import { sky, cloud } from '../art/bg.js';
 
 const TAU = 6.2832;
 const homeG = (game) => (game.data.homeG || 1);
+const DASH = [3, 4], NO_DASH = [];
 
 // ============================================================== tiles
 // W: brick building wall (solid). K: chimney stack (solid; pot rim on its open
@@ -155,7 +156,7 @@ defineEntity('w3_flipgate', {
     ctx.fillStyle = `rgba(${col},${0.22 + e.glow * 0.012})`;
     rrect(ctx, e.x - 2, e.y + 1, e.w + 4, e.h - 2, 7, null, 0);
     ctx.fill();
-    ctx.strokeStyle = `rgba(${col},0.9)`; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]); ctx.lineDashOffset = (up ? 1 : -1) * t * 0.4; ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = `rgba(${col},0.9)`; ctx.lineWidth = 1.5; ctx.setLineDash(DASH); ctx.lineDashOffset = (up ? 1 : -1) * t * 0.4; ctx.stroke(); ctx.setLineDash(NO_DASH);
     // chevrons drifting the way gravity will pull
     ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath();
@@ -244,7 +245,7 @@ defineEntity('w3_puffer', {
 
 // ============================================================== GRAVITY BROLLY
 // A floaty umbrella with a curly handle. Capture: falls slowly, normal-ish
-// jump; tap Jump in mid-air to flip which way is down (once per landing).
+// jump; tap Jump in mid-air to flip which way is down (once per landing, or after a short float).
 function drawBrolly(ctx, x, y, e, game) {
   const t = e.t;
   const air = !e.onGround;
@@ -307,13 +308,20 @@ defineEntity('w3_brolly', {
     w: 16, h: 22,
     move: { jumpVel: 7, gravity: 0.3, maxFall: 2.4, maxRun: 2.3, riseCut: 0, airDecel: 0.06 },
     hat: { y: -3, scale: 0.9 },
-    onEnter(p) { p.data.canFlip = true; },
+    onEnter(p) { p.data.canFlip = true; p.data.air = 0; },
     control(p, game, c) {
-      if (p.onGround) p.data.canFlip = true;
+      // One flip per landing, and the Brolly also catches its breath after a
+      // short float (so a kid who flips up a skylight from the street can
+      // still flip back instead of drifting off into the sky).
+      if (p.onGround) { p.data.canFlip = true; p.data.air = 0; }
+      else if (!p.data.canFlip && ++p.data.air >= 50) {
+        p.data.canFlip = true;
+        game.fx.sparkle(p.x + p.w / 2, p.y + p.h / 2, '#c9a6ff', 4);
+      }
       if (c.jump && !p.onGround && p.coyote <= 0 && !p.inLiquid) {
         c.jump = false;                                  // eat the press: no buffered jump on landing
         if (p.data.canFlip) {
-          p.data.canFlip = false;
+          p.data.canFlip = false; p.data.air = 0;
           game.flipGravity(p);
           p.vy *= 0.3; p.jumping = false;
           game.sfx('w3_flip');
@@ -490,7 +498,7 @@ defineEntity('w3_lampbridge', {
 // from the street) | 'stalk' (a long stem rising out of a pit).
 defineEntity('w3_bulb', {
   anchor: 'cell', w: 16, h: 20, layer: -1,
-  init(e) { e.x += 4; e.y += 2; e.style = e.props.style || 'hang'; },
+  init(e) { e.w = 24; e.y += 2; e.style = e.props.style || 'hang'; },   // a full tile wide: easy to hit with a lamp
   onTouch(e, game, p) {
     const id = e.props.id;
     if (game.signal(id)) return;
@@ -500,12 +508,12 @@ defineEntity('w3_bulb', {
     }
     game.setSignal(id, true);
     game.sfx('switch'); game.sfx('w3_ding');
-    game.fx.sparkle(e.x + 8, e.y + 10, '#ffe27a', 14); game.fx.confetti(e.x + 8, e.y + 10, 14);
+    game.fx.sparkle(e.x + 12, e.y + 10, '#ffe27a', 14); game.fx.confetti(e.x + 12, e.y + 10, 14);
     game.toast('Click! The bulb glows!', 90);
   },
   draw(ctx, e, game) {
     const on = game.signal(e.props.id);
-    const cx = e.x + 8, cy = e.y + 11;
+    const cx = e.x + 12, cy = e.y + 11;
     ctx.strokeStyle = INK; ctx.lineWidth = 2;
     ctx.beginPath();
     if (e.style === 'hang') { ctx.moveTo(cx, e.y - 4); ctx.lineTo(cx, e.y + 2); }
@@ -808,7 +816,7 @@ function drawMayor(ctx, x, y, e, step, game) {
 // so the open street is 6 tiles tall. Where the sky-street has holes, the real
 // sky shows: falling up through one is a pit.
 // Legend (world):  W wall  K chimney  c/q puffer (shoots up/down)  U/D flip gate
-//   g ceiling Gloomlet  R Brolly  r arena Brolly  L Lanky Lamp  I/Z cage bars
+//   g/h ceiling Gloomlet (h: short patrol)  R Brolly  r arena Brolly  L Lanky Lamp  I/Z cage bars
 //   digits: 2 boss  3 arena start  5 pool corners  6 door  7 bulbs  8/9 Brolly stands
 const A_ARRIVAL = [
   '##################################################',
@@ -839,12 +847,12 @@ const B_SWITCHBACK = [
   '##################################################',
   '##################################################',
   '##################################################',
-  '         o o g o  D vvvvv     o o o o  D      K   ',
+  '         o o  ho  D vvvvv     o o o o  D      K   ',
   '                                              q   ',
   '       U                   U                      ',
   '                                                  ',
   '                                         oo     o ',
-  ' F  ?     ^^^^^^^^           ^^^^^^^^      G      ',
+  ' F  ?     ^^^^^^             ^^^^^^^^      G      ',
   '##################################################',
   '##################################################',
   '##################################################',
@@ -879,7 +887,7 @@ const D_LAMPLIGHT = [
   '#############                                           ',
   '#############                                           ',
   '############# 7                                         ',
-  '          7 W                                         * ',
+  '           7W                                         * ',
   '            W                                           ',
   '            W                                           ',
   '            6                               ooo         ',
@@ -951,6 +959,16 @@ const G_TOWN_HALL = [
   '####################################',
 ];
 
+function tallFlag(game, z) {
+  const E = game.entities, cur = game.checkpoint;
+  for (let i = 0; i < E.length; i++) {
+    const f = E[i];
+    if (f.type !== 'checkpoint' || f.x > z.x + z.w || f.x + f.w < z.x) continue;
+    if (cur.ent !== f && !(cur.index > f.props.index)) game.setCheckpoint(f);
+    return;
+  }
+}
+
 function build(L) {
   L.legend({
     W: 'w3_wall', K: 'w3_chimney', I: 'w3_bars_a', Z: 'w3_bars_b',
@@ -959,24 +977,34 @@ function build(L) {
     U: { ent: 'w3_flipgate', props: { dir: -1 } },
     D: { ent: 'w3_flipgate', props: { dir: 1 } },
     g: { ent: 'w3_upgloom', props: { range: 3 } },
+    h: { ent: 'w3_upgloom', props: { range: 2 } },     // a shorter beat: keeps clear of the flip-gate landing spot
     R: 'w3_brolly', r: { ent: 'w3_brolly', props: { arena: true } },
     L: 'w3_lamp',
     F: { ent: 'checkpoint', props: { gdir: 1 } },
   });
-  L.chunk(A_ARRIVAL).chunk(B_SWITCHBACK).chunk(C_BROLLY).chunk(D_LAMPLIGHT).chunk(E_TOPSY_SQUARE).chunk(F_LAUNDRY).chunk(G_TOWN_HALL);
+  const CHUNKS = [A_ARRIVAL, B_SWITCHBACK, C_BROLLY, D_LAMPLIGHT, E_TOPSY_SQUARE, F_LAUNDRY, G_TOWN_HALL];
+  for (const c of CHUNKS) L.chunk(c);
+
+  // Every flag also listens up the whole street height, so Whisk still gets
+  // the checkpoint when he sails over it (e.g. dropping off the sky-street).
+  let cx0 = 0;
+  for (const c of CHUNKS) {
+    for (const row of c) for (let k = 0; k < row.length; k++) if (row[k] === 'F') L.zone('trigger', cx0 + k, 8, 1, 6, { invisible: true, onEnter: tallFlag });
+    cx0 += c[0].length;
+  }
 
   // Mumble's rhymes, left to right, one per '?'.
   L.hints([
     'Purple arrows flip you: up you fall!\nTeal arrows set you down, feet and all.',
     'This chimney coughs a sooty, grumpy puff.\nWait for the wheeze, then scoot past the fluff!',
-    'Spikes hang down, and Gloomlets stroll up there too.\nBop them while you are flipped, or let your Hat fly through!',
+    'Spikes hang down, and Gloomlets stroll up there too.\nBop them while flipped, or let your Hat fly through!',
     'Hat the Brolly, hop, then tap Jump in the air:\nwhich way is down? It flips you over there!',
     'Hat the Lanky Lamp and hold Jump tight:\nit stretches up, up, to switch the bulbs on bright!',
     'Stretch the lamp up tall, then press Hat to hop free.\nTimber! It topples down: a bridge for you and me!',
     'Lamps can fall up too, if an arrow says so.\nStretch one down below, then bridge the gap. Let\'s go!',
     'That fountain spills the wrong way, oh dear!\nHop in and swim: the bottom is up here!',
     'Fall up a skylight? Oh, my shell, take care!\nTap Jump to flip back before you float out of there!',
-    'The Mayor flips the hall so you land on his side.\nBe a Brolly, flip the other way, and ring his bell with pride!',
+    'The Mayor flips the hall so you land on his side.\nAs a Brolly, flip away and ring his bell with pride!',
   ]);
 
   // Flip-door + bulbs (left to right: door bulb, cage bulb, pit bulb)

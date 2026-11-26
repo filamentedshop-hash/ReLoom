@@ -400,7 +400,7 @@ defineEntity('w2_cork', {
       }
       if (d.charge > 0 && !c.jumpHeld) { corkLaunch(p, game, c.dir); return true; }
       if (p.onGround) p.vx = approach(p.vx, c.dir * 1.6, c.dir ? 0.3 : 0.4);
-      else p.vx = approach(p.vx, c.dir * 2.2, 0.1);
+      else p.vx = approach(p.vx, c.dir * 2.2, 0.16);
       return true;
     },
     update(p, game) {
@@ -943,11 +943,13 @@ const F_COMBO = [
 ];
 const G_FINALE = [
   '',
-  '                  ####',
-  '                  #  #',
-  '                  #* #',
-  '                  #%%#',
-  '', '', '', '', '',
+  '            ####',
+  '            #  #',
+  '            #* #',
+  '            #%%#',
+  '', '', '',
+  '             k',
+  '             ==',
   '                         C',
   '',
   '       o   o   o   o   o   o   o',
