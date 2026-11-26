@@ -210,15 +210,16 @@ defineEntity('w4_clocker', {
     w: 16, h: 18,
     move: { maxRun: 1.5, accel: 0.22, windScale: 0.35 },
     hat: { y: -10, scale: 0.85 },
-    onEnter(p) { p.data.cool = 10; p.data.ringT = 0; },
+    onEnter(p) { p.data.cool = 0; p.data.ringT = 0; p.data.want = 0; },
     control(p, game, c) {
       const d = p.data;
       if (d.cool > 0) d.cool--;
       if (d.ringT > 0) d.ringT--;
+      if (c.jump) d.want = 10; else if (d.want > 0) d.want--;     // presses during the cooldown are kept
       p.vx = approach(p.vx, c.dir * 1.5, c.dir ? 0.22 : (p.onGround ? 0.3 : 0.05));
       if (c.dir) p.facing = c.dir;
-      if (c.jump && d.cool <= 0) {
-        d.cool = 26; d.ringT = 24;
+      if (d.want > 0 && d.cool <= 0) {
+        d.want = 0; d.cool = 26; d.ringT = 24;
         if (p.onGround) { p.vy = -5 * p.gdir; p.onGround = false; }
         ring(game, p.x + p.w / 2, p.y + p.h / 2);
       }
@@ -545,7 +546,7 @@ defineEntity('w4_dust', {
       return;
     }
     const b = Math.sin(t * 0.08) * 1.2;
-    ctx.globalAlpha = 0.88;
+    ctx.globalAlpha = e.props.bobX || e.props.bobY ? 0.82 : 0.6;   // the still puff lets its Spark show through
     ctx.beginPath();
     ctx.arc(cx - 8, cy + 2, 6.5 + b, 0, TAU); ctx.arc(cx, cy - 3, 8.5 - b * 0.5, 0, TAU); ctx.arc(cx + 8, cy + 1.5, 6.5 - b, 0, TAU);
     ctx.rect(cx - 9, cy + 1, 18, 6.5);
@@ -656,7 +657,7 @@ const HP = { x: 0, y: 0 };
 
 function headPos(e) {
   const F = e.y + e.h, k = ease(clamp(e.headK, 0, 1));
-  const ux = e.x + 34, uy = F - 124, dx = e.x - 50, dy = F - 27;
+  const ux = e.x + 34, uy = F - 124, dx = e.x - 50, dy = F - 33;
   HP.x = ux + (dx - ux) * k; HP.y = uy + (dy - uy) * k - Math.sin(k * Math.PI) * 18 + e.jolt;
   return HP;
 }
@@ -808,6 +809,10 @@ function drawYawnHead(ctx, e, hx, hy, step, col, dark) {
     const pu = 14 + Math.sin(t * 0.25) * 3;
     ctx.fillStyle = 'rgba(255,226,122,0.28)'; ctx.beginPath(); ctx.arc(ex + 6, ey - 2, pu + 6, 0, TAU); ctx.fill();
     ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(ex + 6, ey - 2, pu, 0, TAU); ctx.stroke();
+    const by = ey - 34 + Math.sin(t * 0.15) * 3;      // a little bell: "ring here!"
+    ctx.save(); ctx.translate(ex + 6, by); ctx.rotate(Math.sin(t * 0.4) * 0.3);
+    drawBell(ctx, 0, 0, 1.1); ctx.restore();
+    ctx.fillStyle = '#ffe27a'; ctx.fillRect(ex + 14, by - 6, 2, 5); ctx.fillRect(ex - 4, by - 6, 2, 5);
   }
   for (let k = 0; k < 2; k++) {
     const a = awake ? -1.2 - k * 0.35 : -0.35 + k * 0.3 + Math.sin(t * 0.05 + k) * 0.08;
@@ -1000,7 +1005,7 @@ const F_SANDBOX = [
   '  F  ?   N   ssss   ? oo                 ? N  sss#############',
   '##########################ssss######====######################',
   '##########################ssss######   #######################',
-  '##########################          ##  ######################',
+  '##########################            ########################',
   '##########################  o o * o  #########################',
   '##############################################################',
 ];
