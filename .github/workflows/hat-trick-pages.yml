@@ -1,0 +1,62 @@
+# Deploys the Hat Trick Odyssey web game (the hat-trick-odyssey/ folder only)
+# to GitHub Pages. It never builds, reads or changes the Godot project.
+#
+# One-time setup: Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+name: Hat Trick Odyssey (GitHub Pages)
+
+on:
+  push:
+    paths:
+      - 'hat-trick-odyssey/**'
+      - '.github/workflows/hat-trick-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let a running deploy finish rather than cancel it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Pushes only deploy from the default branch; manual runs deploy the chosen branch.
+    if: github.event_name == 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Regenerate the offline precache list
+        run: node hat-trick-odyssey/tools/make-precache.mjs
+
+      - name: Assemble the site (game files only)
+        run: |
+          mkdir -p _site
+          cp -R hat-trick-odyssey/index.html hat-trick-odyssey/manifest.webmanifest \
+                hat-trick-odyssey/sw.js hat-trick-odyssey/pwa.js \
+                hat-trick-odyssey/css hat-trick-odyssey/js hat-trick-odyssey/icons _site/
+          touch _site/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

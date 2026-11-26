@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hat Trick Odyssey</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hat Trick">
+<meta name="theme-color" content="#241a3a">
+<meta name="format-detection" content="telephone=no">
+<meta name="application-name" content="Hat Trick Odyssey">
+<meta name="description" content="Hat Trick Odyssey: a globe-trotting hat-throwing platformer for iPhone and iPad.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png">
+<link rel="stylesheet" href="css/app.css">
+<script src="pwa.js" defer></script>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="512" height="288" aria-label="Hat Trick Odyssey game"></canvas>
+</div>
+
+<!-- On-screen controls. Hit-testing is done in js/engine/input.js from the
+     data-act rectangles, so one finger can slide between buttons. -->
+<div id="touch" class="hidden" aria-hidden="true">
+  <div class="pad pad-left">
+    <div class="tbtn" data-act="left"><svg viewBox="0 0 24 24"><path d="M15 4 L6 12 L15 20 Z"/></svg></div>
+    <div class="tbtn" data-act="right"><svg viewBox="0 0 24 24"><path d="M9 4 L18 12 L9 20 Z"/></svg></div>
+  </div>
+  <div class="pad pad-right">
+    <div class="tbtn tbtn-hat" data-act="hat"><span>HAT</span></div>
+    <div class="tbtn tbtn-jump" data-act="jump"><span>JUMP</span></div>
+  </div>
+</div>
+
+<div id="rotate" class="hidden" role="status">
+  <div class="rotate-card">
+    <div class="rotate-phone"></div>
+    <p>Turn your device sideways<br>for the best adventure!</p>
+  </div>
+</div>
+
+<div id="safe-probe" aria-hidden="true"></div>
+<noscript>Hat Trick Odyssey needs JavaScript to run.</noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
